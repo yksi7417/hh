@@ -3,7 +3,8 @@
 #include <stdio.h>
 
 LRESULT CALLBACK
-MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam) {
+MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam) 
+{
     switch (Message) {
     case WM_CLOSE:  PostQuitMessage(0); return 0;
     case WM_DESTROY: return 0;
@@ -17,7 +18,12 @@ MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam) {
     return DefWindowProcA(Window, Message, WParam, LParam);
 }
 
-int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
+int WINAPI WinMain(
+    HINSTANCE Instance,     // Reference of this instance, 
+    HINSTANCE PrevInstance, // Legacy, never used 
+    LPSTR CmdLine, 
+    int ShowCmd)            // normal windows / etc - windows setting
+{
     WNDCLASSA wc = {0};
     wc.style         = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
     wc.lpfnWndProc   = MainWindowCallback;
