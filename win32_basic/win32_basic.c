@@ -42,7 +42,8 @@ int WINAPI WinMain(
     UpdateWindow(window);
 
     // Debug print like Casey discusses (note the trailing \n is not needed)
-    OutputDebugStringA("WinMain started\n");  // Shows in DebugView or VS Output
+    char* Foo = "WinMain started\n";
+    OutputDebugStringA(Foo);  // Shows in DebugView or VS Output
 
     // Use CmdLine parameter to display command-line arguments if any
     if (CmdLine && strlen(CmdLine) > 0) {
