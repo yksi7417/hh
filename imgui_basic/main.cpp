@@ -67,9 +67,19 @@ int main(int, char**)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
+    
+    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
@@ -106,143 +116,132 @@ int main(int, char**)
         ImGui::NewFrame();
 
         // Create main window with two sections
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-        ImGui::SetNextWindowSize(io.DisplaySize);
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar;
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
         window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
         window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
         ImGui::Begin("MainWindow", nullptr, window_flags);
         ImGui::PopStyleVar(3);
 
-        // Create horizontal layout with two sections
-        if (ImGui::BeginTable("MainLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
+        // Create dockspace
+        ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+
+        // Navigator Window (dockable)
+        ImGui::Begin("Navigator");
+        
+        // Tree structure
+        if (ImGui::TreeNode("Categories"))
         {
-            ImGui::TableSetupColumn("Navigator", ImGuiTableColumnFlags_WidthFixed, 300.0f);
-            ImGui::TableSetupColumn("Orders", ImGuiTableColumnFlags_WidthStretch);
-            
-            ImGui::TableNextRow();
-            
-            // Left section - Navigator
-            ImGui::TableSetColumnIndex(0);
-            ImGui::BeginChild("NavigatorPane", ImVec2(0, 0), true);
-            ImGui::Text("Navigator");
-            ImGui::Separator();
-            
-            // Tree structure
-            if (ImGui::TreeNode("Categories"))
+            if (ImGui::TreeNode("Electronics"))
             {
-                if (ImGui::TreeNode("Electronics"))
+                if (ImGui::TreeNode("Computers"))
                 {
-                    if (ImGui::TreeNode("Computers"))
-                    {
-                        ImGui::TreeNodeEx("Laptops", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                        ImGui::TreeNodeEx("Desktops", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                        ImGui::TreePop();
-                    }
-                    if (ImGui::TreeNode("Mobile"))
-                    {
-                        ImGui::TreeNodeEx("Phones", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                        ImGui::TreeNodeEx("Tablets", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                        ImGui::TreePop();
-                    }
+                    ImGui::TreeNodeEx("Laptops", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                    ImGui::TreeNodeEx("Desktops", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
                     ImGui::TreePop();
                 }
-                if (ImGui::TreeNode("Clothing"))
+                if (ImGui::TreeNode("Mobile"))
                 {
-                    ImGui::TreeNodeEx("Men's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreeNodeEx("Women's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreeNodeEx("Children's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreePop();
-                }
-                if (ImGui::TreeNode("Home & Garden"))
-                {
-                    ImGui::TreeNodeEx("Furniture", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreeNodeEx("Tools", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreeNodeEx("Decor", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                    ImGui::TreeNodeEx("Phones", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                    ImGui::TreeNodeEx("Tablets", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
                     ImGui::TreePop();
                 }
                 ImGui::TreePop();
             }
-            
-            if (ImGui::TreeNode("Customers"))
+            if (ImGui::TreeNode("Clothing"))
             {
-                ImGui::TreeNodeEx("Active", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("Inactive", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("VIP", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                ImGui::TreeNodeEx("Men's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                ImGui::TreeNodeEx("Women's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                ImGui::TreeNodeEx("Children's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
                 ImGui::TreePop();
             }
-            
-            if (ImGui::TreeNode("Reports"))
+            if (ImGui::TreeNode("Home & Garden"))
             {
-                ImGui::TreeNodeEx("Sales", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("Inventory", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("Financial", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                ImGui::TreeNodeEx("Furniture", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                ImGui::TreeNodeEx("Tools", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                ImGui::TreeNodeEx("Decor", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
                 ImGui::TreePop();
             }
+            ImGui::TreePop();
+        }
+        
+        if (ImGui::TreeNode("Customers"))
+        {
+            ImGui::TreeNodeEx("Active", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::TreeNodeEx("Inactive", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::TreeNodeEx("VIP", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::TreePop();
+        }
+        
+        if (ImGui::TreeNode("Reports"))
+        {
+            ImGui::TreeNodeEx("Sales", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::TreeNodeEx("Inventory", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::TreeNodeEx("Financial", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::TreePop();
+        }
+        
+        ImGui::End(); // Navigator
+
+        // Orders Window (dockable)
+        ImGui::Begin("Orders");
+        
+        // Orders table
+        if (ImGui::BeginTable("OrdersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable))
+        {
+            ImGui::TableSetupColumn("Order ID", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed, 80.0f, 0);
+            ImGui::TableSetupColumn("Customer", ImGuiTableColumnFlags_WidthFixed, 120.0f, 1);
+            ImGui::TableSetupColumn("Product", ImGuiTableColumnFlags_WidthFixed, 100.0f, 2);
+            ImGui::TableSetupColumn("Quantity", ImGuiTableColumnFlags_WidthFixed, 80.0f, 3);
+            ImGui::TableSetupColumn("Price", ImGuiTableColumnFlags_WidthFixed, 80.0f, 4);
+            ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthStretch, 0.0f, 5);
+            ImGui::TableHeadersRow();
             
-            ImGui::EndChild();
-            
-            // Right section - Orders
-            ImGui::TableSetColumnIndex(1);
-            ImGui::BeginChild("OrdersPane", ImVec2(0, 0), true);
-            ImGui::Text("Orders");
-            ImGui::Separator();
-            
-            // Orders table
-            if (ImGui::BeginTable("OrdersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable))
+            // Display orders
+            for (int row = 0; row < sizeof(orders) / sizeof(orders[0]); row++)
             {
-                ImGui::TableSetupColumn("Order ID", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed, 80.0f, 0);
-                ImGui::TableSetupColumn("Customer", ImGuiTableColumnFlags_WidthFixed, 120.0f, 1);
-                ImGui::TableSetupColumn("Product", ImGuiTableColumnFlags_WidthFixed, 100.0f, 2);
-                ImGui::TableSetupColumn("Quantity", ImGuiTableColumnFlags_WidthFixed, 80.0f, 3);
-                ImGui::TableSetupColumn("Price", ImGuiTableColumnFlags_WidthFixed, 80.0f, 4);
-                ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthStretch, 0.0f, 5);
-                ImGui::TableHeadersRow();
+                ImGui::TableNextRow();
                 
-                // Display orders
-                for (int row = 0; row < sizeof(orders) / sizeof(orders[0]); row++)
-                {
-                    ImGui::TableNextRow();
-                    
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%d", orders[row].id);
-                    
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%s", orders[row].customer);
-                    
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("%s", orders[row].product);
-                    
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("%d", orders[row].quantity);
-                    
-                    ImGui::TableSetColumnIndex(4);
-                    ImGui::Text("$%.2f", orders[row].price);
-                    
-                    ImGui::TableSetColumnIndex(5);
-                    // Color code status
-                    if (strcmp(orders[row].status, "Delivered") == 0)
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status);
-                    else if (strcmp(orders[row].status, "Shipped") == 0)
-                        ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", orders[row].status);
-                    else if (strcmp(orders[row].status, "Processing") == 0)
-                        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status);
-                    else
-                        ImGui::Text("%s", orders[row].status);
-                }
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%d", orders[row].id);
                 
-                ImGui::EndTable();
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s", orders[row].customer);
+                
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%s", orders[row].product);
+                
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%d", orders[row].quantity);
+                
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("$%.2f", orders[row].price);
+                
+                ImGui::TableSetColumnIndex(5);
+                // Color code status
+                if (strcmp(orders[row].status, "Delivered") == 0)
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status);
+                else if (strcmp(orders[row].status, "Shipped") == 0)
+                    ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", orders[row].status);
+                else if (strcmp(orders[row].status, "Processing") == 0)
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status);
+                else
+                    ImGui::Text("%s", orders[row].status);
             }
-            
-            ImGui::EndChild();
             
             ImGui::EndTable();
         }
+        
+        ImGui::End(); // Orders
 
         ImGui::End();
 
@@ -252,6 +251,13 @@ int main(int, char**)
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+        // Update and Render additional Platform Windows
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
 
         g_pSwapChain->Present(1, 0); // Present with vsync
     }
