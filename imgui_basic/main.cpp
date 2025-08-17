@@ -9,6 +9,7 @@
 #include <string>
 #include <random>
 #include <sstream>
+#include "navigator.h"
 
 // Data
 static ID3D11Device*            g_pd3dDevice = nullptr;
@@ -63,6 +64,7 @@ static const char* statuses[] = {
 
 static std::vector<Order> orders;
 static bool orders_generated = false;
+static Navigator* g_navigator = nullptr;
 
 // Function to generate random orders
 void GenerateOrders(int count) {
@@ -138,6 +140,10 @@ int main(int, char**)
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
+    // Initialize Navigator
+    g_navigator = new Navigator();
+    g_navigator->Initialize();
+
     // Generate 100k sample orders
     GenerateOrders(100000);
 
@@ -191,62 +197,10 @@ int main(int, char**)
         ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
 
-        // Navigator Window (dockable)
-        ImGui::Begin("Navigator");
-        
-        // Tree structure
-        if (ImGui::TreeNode("Categories"))
-        {
-            if (ImGui::TreeNode("Electronics"))
-            {
-                if (ImGui::TreeNode("Computers"))
-                {
-                    ImGui::TreeNodeEx("Laptops", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreeNodeEx("Desktops", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreePop();
-                }
-                if (ImGui::TreeNode("Mobile"))
-                {
-                    ImGui::TreeNodeEx("Phones", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreeNodeEx("Tablets", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::TreePop();
-                }
-                ImGui::TreePop();
-            }
-            if (ImGui::TreeNode("Clothing"))
-            {
-                ImGui::TreeNodeEx("Men's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("Women's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("Children's", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreePop();
-            }
-            if (ImGui::TreeNode("Home & Garden"))
-            {
-                ImGui::TreeNodeEx("Furniture", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("Tools", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreeNodeEx("Decor", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                ImGui::TreePop();
-            }
-            ImGui::TreePop();
+        // Navigator Window (from DLL)
+        if (g_navigator) {
+            g_navigator->Render();
         }
-        
-        if (ImGui::TreeNode("Customers"))
-        {
-            ImGui::TreeNodeEx("Active", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TreeNodeEx("Inactive", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TreeNodeEx("VIP", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TreePop();
-        }
-        
-        if (ImGui::TreeNode("Reports"))
-        {
-            ImGui::TreeNodeEx("Sales", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TreeNodeEx("Inventory", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TreeNodeEx("Financial", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TreePop();
-        }
-        
-        ImGui::End(); // Navigator
 
         // Orders Window (dockable)
         ImGui::Begin("Orders");
@@ -377,6 +331,12 @@ int main(int, char**)
     }
 
     // Cleanup
+    if (g_navigator) {
+        g_navigator->Cleanup();
+        delete g_navigator;
+        g_navigator = nullptr;
+    }
+    
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
