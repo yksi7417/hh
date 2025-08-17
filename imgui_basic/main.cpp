@@ -5,6 +5,10 @@
 #include <dxgi1_4.h>
 #include <tchar.h>
 #include <windows.h>
+#include <vector>
+#include <string>
+#include <random>
+#include <sstream>
 
 // Data
 static ID3D11Device*            g_pd3dDevice = nullptr;
@@ -23,23 +27,72 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Sample data for the Orders table
 struct Order {
     int id;
-    const char* customer;
-    const char* product;
+    std::string customer;
+    std::string product;
     int quantity;
     float price;
-    const char* status;
+    std::string status;
 };
 
-static Order orders[] = {
-    {1001, "John Smith", "Widget A", 5, 25.99f, "Pending"},
-    {1002, "Sarah Johnson", "Widget B", 3, 45.50f, "Shipped"},
-    {1003, "Mike Brown", "Widget C", 10, 15.75f, "Delivered"},
-    {1004, "Lisa Davis", "Widget A", 2, 25.99f, "Processing"},
-    {1005, "Tom Wilson", "Widget D", 7, 33.25f, "Pending"},
-    {1006, "Amy Chen", "Widget B", 4, 45.50f, "Shipped"},
-    {1007, "Bob Martinez", "Widget C", 8, 15.75f, "Delivered"},
-    {1008, "Kate Anderson", "Widget A", 1, 25.99f, "Processing"}
+// Sample data arrays for random generation
+static const char* first_names[] = {
+    "John", "Jane", "Mike", "Sarah", "Tom", "Lisa", "Bob", "Amy", "David", "Emma",
+    "Chris", "Anna", "Mark", "Kate", "Paul", "Laura", "Steve", "Maria", "Dan", "Sophie",
+    "Alex", "Grace", "Matt", "Eva", "Nick", "Lily", "Sam", "Rose", "Ben", "Zoe",
+    "Jake", "Mia", "Luke", "Ella", "Ryan", "Chloe", "Adam", "Olivia", "Josh", "Maya"
 };
+
+static const char* last_names[] = {
+    "Smith", "Johnson", "Brown", "Davis", "Wilson", "Chen", "Martinez", "Anderson",
+    "Garcia", "Miller", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Thompson",
+    "White", "Harris", "Clark", "Lewis", "Walker", "Hall", "Allen", "Young",
+    "King", "Wright", "Lopez", "Hill", "Scott", "Green", "Adams", "Baker",
+    "Gonzalez", "Nelson", "Carter", "Mitchell", "Perez", "Roberts", "Turner", "Phillips"
+};
+
+static const char* products[] = {
+    "Widget A", "Widget B", "Widget C", "Widget D", "Widget E",
+    "Gadget Pro", "Gadget Lite", "Gadget Max", "Device X1", "Device X2",
+    "Tool Basic", "Tool Premium", "Kit Standard", "Kit Deluxe", "Module Alpha",
+    "Module Beta", "Component Z", "Assembly Unit", "Part 2000", "Part 3000"
+};
+
+static const char* statuses[] = {
+    "Pending", "Processing", "Shipped", "Delivered", "Cancelled"
+};
+
+static std::vector<Order> orders;
+static bool orders_generated = false;
+
+// Function to generate random orders
+void GenerateOrders(int count) {
+    if (orders_generated) return;
+    
+    orders.reserve(count);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    std::uniform_int_distribution<> first_name_dist(0, sizeof(first_names)/sizeof(first_names[0]) - 1);
+    std::uniform_int_distribution<> last_name_dist(0, sizeof(last_names)/sizeof(last_names[0]) - 1);
+    std::uniform_int_distribution<> product_dist(0, sizeof(products)/sizeof(products[0]) - 1);
+    std::uniform_int_distribution<> status_dist(0, sizeof(statuses)/sizeof(statuses[0]) - 1);
+    std::uniform_int_distribution<> quantity_dist(1, 20);
+    std::uniform_real_distribution<float> price_dist(5.99f, 299.99f);
+    
+    for (int i = 0; i < count; ++i) {
+        Order order;
+        order.id = 1000 + i;
+        order.customer = std::string(first_names[first_name_dist(gen)]) + " " + std::string(last_names[last_name_dist(gen)]);
+        order.product = products[product_dist(gen)];
+        order.quantity = quantity_dist(gen);
+        order.price = price_dist(gen);
+        order.status = statuses[status_dist(gen)];
+        
+        orders.push_back(order);
+    }
+    
+    orders_generated = true;
+}
 
 // Main code
 int main(int, char**)
@@ -84,6 +137,9 @@ int main(int, char**)
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    // Generate 100k sample orders
+    GenerateOrders(100000);
 
     // Main loop
     bool done = false;
@@ -195,8 +251,11 @@ int main(int, char**)
         // Orders Window (dockable)
         ImGui::Begin("Orders");
         
-        // Orders table
-        if (ImGui::BeginTable("OrdersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable))
+        ImGui::Text("Total Orders: %d", (int)orders.size());
+        ImGui::Separator();
+        
+        // Orders table with virtualization for large datasets
+        if (ImGui::BeginTable("OrdersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable | ImGuiTableFlags_ScrollY))
         {
             ImGui::TableSetupColumn("Order ID", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed, 80.0f, 0);
             ImGui::TableSetupColumn("Customer", ImGuiTableColumnFlags_WidthFixed, 120.0f, 1);
@@ -206,36 +265,44 @@ int main(int, char**)
             ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthStretch, 0.0f, 5);
             ImGui::TableHeadersRow();
             
-            // Display orders
-            for (int row = 0; row < sizeof(orders) / sizeof(orders[0]); row++)
+            // Use clipper for efficient rendering of large lists
+            ImGuiListClipper clipper;
+            clipper.Begin((int)orders.size());
+            
+            while (clipper.Step())
             {
-                ImGui::TableNextRow();
-                
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%d", orders[row].id);
-                
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%s", orders[row].customer);
-                
-                ImGui::TableSetColumnIndex(2);
-                ImGui::Text("%s", orders[row].product);
-                
-                ImGui::TableSetColumnIndex(3);
-                ImGui::Text("%d", orders[row].quantity);
-                
-                ImGui::TableSetColumnIndex(4);
-                ImGui::Text("$%.2f", orders[row].price);
-                
-                ImGui::TableSetColumnIndex(5);
-                // Color code status
-                if (strcmp(orders[row].status, "Delivered") == 0)
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status);
-                else if (strcmp(orders[row].status, "Shipped") == 0)
-                    ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", orders[row].status);
-                else if (strcmp(orders[row].status, "Processing") == 0)
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status);
-                else
-                    ImGui::Text("%s", orders[row].status);
+                for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
+                {
+                    ImGui::TableNextRow();
+                    
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%d", orders[row].id);
+                    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%s", orders[row].customer.c_str());
+                    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%s", orders[row].product.c_str());
+                    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%d", orders[row].quantity);
+                    
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("$%.2f", orders[row].price);
+                    
+                    ImGui::TableSetColumnIndex(5);
+                    // Color code status
+                    if (orders[row].status == "Delivered")
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status.c_str());
+                    else if (orders[row].status == "Shipped")
+                        ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", orders[row].status.c_str());
+                    else if (orders[row].status == "Processing")
+                        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status.c_str());
+                    else if (orders[row].status == "Cancelled")
+                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", orders[row].status.c_str());
+                    else
+                        ImGui::Text("%s", orders[row].status.c_str());
+                }
             }
             
             ImGui::EndTable();
