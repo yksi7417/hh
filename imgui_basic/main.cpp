@@ -265,6 +265,53 @@ int main(int, char**)
             ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthStretch, 0.0f, 5);
             ImGui::TableHeadersRow();
             
+            // Handle sorting
+            if (ImGuiTableSortSpecs* sort_specs = ImGui::TableGetSortSpecs())
+            {
+                if (sort_specs->SpecsDirty)
+                {
+                    if (orders.size() > 1)
+                    {
+                        std::sort(orders.begin(), orders.end(), [sort_specs](const Order& a, const Order& b) {
+                            for (int n = 0; n < sort_specs->SpecsCount; n++)
+                            {
+                                const ImGuiTableColumnSortSpecs* sort_spec = &sort_specs->Specs[n];
+                                int delta = 0;
+                                
+                                switch (sort_spec->ColumnIndex)
+                                {
+                                case 0: // Order ID
+                                    delta = (a.id < b.id) ? -1 : (a.id > b.id) ? 1 : 0;
+                                    break;
+                                case 1: // Customer
+                                    delta = a.customer.compare(b.customer);
+                                    break;
+                                case 2: // Product
+                                    delta = a.product.compare(b.product);
+                                    break;
+                                case 3: // Quantity
+                                    delta = (a.quantity < b.quantity) ? -1 : (a.quantity > b.quantity) ? 1 : 0;
+                                    break;
+                                case 4: // Price
+                                    delta = (a.price < b.price) ? -1 : (a.price > b.price) ? 1 : 0;
+                                    break;
+                                case 5: // Status
+                                    delta = a.status.compare(b.status);
+                                    break;
+                                }
+                                
+                                if (delta != 0)
+                                {
+                                    return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? (delta < 0) : (delta > 0);
+                                }
+                            }
+                            return false;
+                        });
+                    }
+                    sort_specs->SpecsDirty = false;
+                }
+            }
+            
             // Use clipper for efficient rendering of large lists
             ImGuiListClipper clipper;
             clipper.Begin((int)orders.size());
