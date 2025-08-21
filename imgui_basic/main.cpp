@@ -10,91 +10,19 @@
 #include <random>
 #include <sstream>
 #include "navigator.h"
+#include "dx11_renderer.h"
+#include "order_blotter.h"
 
-// Data
-static ID3D11Device*            g_pd3dDevice = nullptr;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain*          g_pSwapChain = nullptr;
-static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
-static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
+// Define the DirectX 11 global variables (declared as extern in dx11_renderer.h)
+ID3D11Device*            g_pd3dDevice = nullptr;
+ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
+IDXGISwapChain*          g_pSwapChain = nullptr;
+UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
+ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
-// Forward declarations
-bool CreateDeviceD3D(HWND hWnd);
-void CleanupDeviceD3D();
-void CreateRenderTarget();
-void CleanupRenderTarget();
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-// Sample data for the Orders table
-struct Order {
-    int id;
-    std::string customer;
-    std::string product;
-    int quantity;
-    float price;
-    std::string status;
-};
-
-// Sample data arrays for random generation
-static const char* first_names[] = {
-    "John", "Jane", "Mike", "Sarah", "Tom", "Lisa", "Bob", "Amy", "David", "Emma",
-    "Chris", "Anna", "Mark", "Kate", "Paul", "Laura", "Steve", "Maria", "Dan", "Sophie",
-    "Alex", "Grace", "Matt", "Eva", "Nick", "Lily", "Sam", "Rose", "Ben", "Zoe",
-    "Jake", "Mia", "Luke", "Ella", "Ryan", "Chloe", "Adam", "Olivia", "Josh", "Maya"
-};
-
-static const char* last_names[] = {
-    "Smith", "Johnson", "Brown", "Davis", "Wilson", "Chen", "Martinez", "Anderson",
-    "Garcia", "Miller", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Thompson",
-    "White", "Harris", "Clark", "Lewis", "Walker", "Hall", "Allen", "Young",
-    "King", "Wright", "Lopez", "Hill", "Scott", "Green", "Adams", "Baker",
-    "Gonzalez", "Nelson", "Carter", "Mitchell", "Perez", "Roberts", "Turner", "Phillips"
-};
-
-static const char* products[] = {
-    "Widget A", "Widget B", "Widget C", "Widget D", "Widget E",
-    "Gadget Pro", "Gadget Lite", "Gadget Max", "Device X1", "Device X2",
-    "Tool Basic", "Tool Premium", "Kit Standard", "Kit Deluxe", "Module Alpha",
-    "Module Beta", "Component Z", "Assembly Unit", "Part 2000", "Part 3000"
-};
-
-static const char* statuses[] = {
-    "Pending", "Processing", "Shipped", "Delivered", "Cancelled"
-};
-
-static std::vector<Order> orders;
-static bool orders_generated = false;
+// Application objects
 static Navigator* g_navigator = nullptr;
-
-// Function to generate random orders
-void GenerateOrders(int count) {
-    if (orders_generated) return;
-    
-    orders.reserve(count);
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    
-    std::uniform_int_distribution<> first_name_dist(0, sizeof(first_names)/sizeof(first_names[0]) - 1);
-    std::uniform_int_distribution<> last_name_dist(0, sizeof(last_names)/sizeof(last_names[0]) - 1);
-    std::uniform_int_distribution<> product_dist(0, sizeof(products)/sizeof(products[0]) - 1);
-    std::uniform_int_distribution<> status_dist(0, sizeof(statuses)/sizeof(statuses[0]) - 1);
-    std::uniform_int_distribution<> quantity_dist(1, 20);
-    std::uniform_real_distribution<float> price_dist(5.99f, 299.99f);
-    
-    for (int i = 0; i < count; ++i) {
-        Order order;
-        order.id = 1000 + i;
-        order.customer = std::string(first_names[first_name_dist(gen)]) + " " + std::string(last_names[last_name_dist(gen)]);
-        order.product = products[product_dist(gen)];
-        order.quantity = quantity_dist(gen);
-        order.price = price_dist(gen);
-        order.status = statuses[status_dist(gen)];
-        
-        orders.push_back(order);
-    }
-    
-    orders_generated = true;
-}
+static OrderBlotter* g_order_blotter = nullptr;
 
 // Main code
 int main(int, char**)
@@ -144,8 +72,15 @@ int main(int, char**)
     g_navigator = new Navigator();
     g_navigator->Initialize();
 
-    // Generate 100k sample orders
-    GenerateOrders(100000);
+    // Initialize Order Blotter
+    g_order_blotter = new OrderBlotter();
+    g_order_blotter->Initialize(100000); // Generate 100k sample orders
+
+    // Timing for 10 FPS rendering
+    LARGE_INTEGER frequency, lastRenderTime, currentTime;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&lastRenderTime);
+    const double targetRenderInterval = 1.0 / 10.0; // 10 FPS = 0.1 seconds
 
     // Main loop
     bool done = false;
@@ -171,6 +106,15 @@ int main(int, char**)
             g_ResizeWidth = g_ResizeHeight = 0;
             CreateRenderTarget();
         }
+
+        // Check if it's time to render (10 FPS)
+        QueryPerformanceCounter(&currentTime);
+        double elapsedTime = (double)(currentTime.QuadPart - lastRenderTime.QuadPart) / frequency.QuadPart;
+
+        if (elapsedTime < targetRenderInterval)
+            continue;
+
+        lastRenderTime = currentTime;
 
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
@@ -202,114 +146,10 @@ int main(int, char**)
             g_navigator->Render();
         }
 
-        // Orders Window (dockable)
-        ImGui::Begin("Orders");
-        
-        ImGui::Text("Total Orders: %d", (int)orders.size());
-        ImGui::Separator();
-        
-        // Orders table with virtualization for large datasets
-        if (ImGui::BeginTable("OrdersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable | ImGuiTableFlags_ScrollY))
-        {
-            ImGui::TableSetupColumn("Order ID", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed, 80.0f, 0);
-            ImGui::TableSetupColumn("Customer", ImGuiTableColumnFlags_WidthFixed, 120.0f, 1);
-            ImGui::TableSetupColumn("Product", ImGuiTableColumnFlags_WidthFixed, 100.0f, 2);
-            ImGui::TableSetupColumn("Quantity", ImGuiTableColumnFlags_WidthFixed, 80.0f, 3);
-            ImGui::TableSetupColumn("Price", ImGuiTableColumnFlags_WidthFixed, 80.0f, 4);
-            ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthStretch, 0.0f, 5);
-            ImGui::TableHeadersRow();
-            
-            // Handle sorting
-            if (ImGuiTableSortSpecs* sort_specs = ImGui::TableGetSortSpecs())
-            {
-                if (sort_specs->SpecsDirty)
-                {
-                    if (orders.size() > 1)
-                    {
-                        std::sort(orders.begin(), orders.end(), [sort_specs](const Order& a, const Order& b) {
-                            for (int n = 0; n < sort_specs->SpecsCount; n++)
-                            {
-                                const ImGuiTableColumnSortSpecs* sort_spec = &sort_specs->Specs[n];
-                                int delta = 0;
-                                
-                                switch (sort_spec->ColumnIndex)
-                                {
-                                case 0: // Order ID
-                                    delta = (a.id < b.id) ? -1 : (a.id > b.id) ? 1 : 0;
-                                    break;
-                                case 1: // Customer
-                                    delta = a.customer.compare(b.customer);
-                                    break;
-                                case 2: // Product
-                                    delta = a.product.compare(b.product);
-                                    break;
-                                case 3: // Quantity
-                                    delta = (a.quantity < b.quantity) ? -1 : (a.quantity > b.quantity) ? 1 : 0;
-                                    break;
-                                case 4: // Price
-                                    delta = (a.price < b.price) ? -1 : (a.price > b.price) ? 1 : 0;
-                                    break;
-                                case 5: // Status
-                                    delta = a.status.compare(b.status);
-                                    break;
-                                }
-                                
-                                if (delta != 0)
-                                {
-                                    return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? (delta < 0) : (delta > 0);
-                                }
-                            }
-                            return false;
-                        });
-                    }
-                    sort_specs->SpecsDirty = false;
-                }
-            }
-            
-            // Use clipper for efficient rendering of large lists
-            ImGuiListClipper clipper;
-            clipper.Begin((int)orders.size());
-            
-            while (clipper.Step())
-            {
-                for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
-                {
-                    ImGui::TableNextRow();
-                    
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%d", orders[row].id);
-                    
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%s", orders[row].customer.c_str());
-                    
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("%s", orders[row].product.c_str());
-                    
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("%d", orders[row].quantity);
-                    
-                    ImGui::TableSetColumnIndex(4);
-                    ImGui::Text("$%.2f", orders[row].price);
-                    
-                    ImGui::TableSetColumnIndex(5);
-                    // Color code status
-                    if (orders[row].status == "Delivered")
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status.c_str());
-                    else if (orders[row].status == "Shipped")
-                        ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", orders[row].status.c_str());
-                    else if (orders[row].status == "Processing")
-                        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", orders[row].status.c_str());
-                    else if (orders[row].status == "Cancelled")
-                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", orders[row].status.c_str());
-                    else
-                        ImGui::Text("%s", orders[row].status.c_str());
-                }
-            }
-            
-            ImGui::EndTable();
+        // Orders Window (from OrderBlotter)
+        if (g_order_blotter) {
+            g_order_blotter->Render();
         }
-        
-        ImGui::End(); // Orders
 
         ImGui::End();
 
@@ -335,6 +175,11 @@ int main(int, char**)
         g_navigator->Cleanup();
         delete g_navigator;
         g_navigator = nullptr;
+    }
+    
+    if (g_order_blotter) {
+        delete g_order_blotter;
+        g_order_blotter = nullptr;
     }
     
     ImGui_ImplDX11_Shutdown();

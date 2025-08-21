@@ -1,5 +1,5 @@
 #include "navigator_test_helper.h"
-#include "imgui_te_context.h"
+#include "../imgui_test_engine/imgui_te_context.h"
 #include <string>
 #include <vector>
 

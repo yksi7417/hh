@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "algorithm": "cpp",
+        "random": "cpp",
+        "vector": "cpp",
+        "string": "cpp",
+        "sstream": "cpp",
+        "ctime": "cpp",
+        "iostream": "cpp",
+        "chrono": "cpp",
+        "cassert": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp"
+    }
+}

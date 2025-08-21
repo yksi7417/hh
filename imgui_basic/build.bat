@@ -11,6 +11,7 @@ echo Building application with Navigator...
 cl /nologo /Zi /W4 /EHsc /std:c++17 ^
     ..\main.cpp ^
     ..\navigator.cpp ^
+    ..\order_blotter.cpp ^
     ..\imgui\imgui.cpp ^
     ..\imgui\imgui_draw.cpp ^
     ..\imgui\imgui_widgets.cpp ^

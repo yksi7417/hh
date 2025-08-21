@@ -2,14 +2,14 @@
 #include <tchar.h>
 #include <d3d11.h>
 #include <dxgi1_4.h>
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx11.h"
-#include "imgui_te_imconfig.h"
-#include "imgui_te_engine.h"
-#include "imgui_te_context.h"
-#include "imgui_te_ui.h"
-#include "navigator.h"
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_impl_dx11.h"
+#include "../imgui_test_engine/imgui_te_imconfig.h"
+#include "../imgui_test_engine/imgui_te_engine.h"
+#include "../imgui_test_engine/imgui_te_context.h"
+#include "../imgui_test_engine/imgui_te_ui.h"
+#include "../navigator.h"
 
 // Data
 static ID3D11Device*            g_pd3dDevice = nullptr;
