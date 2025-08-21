@@ -20,6 +20,19 @@ enum FilterType {
     FILTER_NUMERIC_RANGE
 };
 
+// Grouping support
+struct GroupInfo {
+    std::string group_key;          // The value that defines this group
+    std::vector<int> order_indices; // Indices into the filtered_orders_ array
+    bool is_collapsed = false;      // Whether this group is collapsed
+    
+    // Aggregate data for the group
+    int total_quantity = 0;
+    float total_value = 0.0f;       // quantity * price
+    float average_price = 0.0f;
+    int order_count = 0;
+};
+
 // Column filter structure
 struct ColumnFilter {
     FilterType type = FILTER_NONE;
@@ -69,6 +82,12 @@ public:
     void ClearAllFilters();
     void SetColumnFilter(int column, const ColumnFilter& filter);
     bool HasActiveFilters() const;
+    
+    // Grouping management
+    void SetGroupByColumn(int column);
+    void ClearGrouping();
+    bool HasActiveGrouping() const { return group_by_column_ >= 0; }
+    int GetGroupByColumn() const { return group_by_column_; }
 
 private:
     // Data
@@ -79,6 +98,11 @@ private:
     // Filtering state
     ColumnFilter column_filters_[6];  // One for each column
     bool filters_dirty_ = true;       // Flag to rebuild filtered view
+    
+    // Grouping state
+    int group_by_column_ = -1;        // Column to group by (-1 = no grouping)
+    std::vector<GroupInfo> groups_;   // Group information
+    bool groups_dirty_ = true;        // Flag to rebuild groups
     
     // Selection state
     std::vector<int> selected_order_ids_;  // Store Order IDs, not row indices
@@ -96,4 +120,13 @@ private:
     void ApplyFilters();
     bool PassesFilter(const Order& order) const;
     bool PassesColumnFilter(const Order& order, int column, const ColumnFilter& filter) const;
+    
+    // Grouping functions
+    void ApplyGrouping();
+    void BuildGroups();
+    void RenderGroupedTable();
+    void RenderGroupHeader(const GroupInfo& group, int group_index);
+    void RenderGroupRow(const Order& order, int row_index);
+    std::string GetGroupKey(const Order& order, int column) const;
+    void CalculateGroupAggregates(GroupInfo& group) const;
 };

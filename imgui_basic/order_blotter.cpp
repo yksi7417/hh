@@ -3,6 +3,7 @@
 #include <random>
 #include <cmath>
 #include <cstring>
+#include <map>
 
 // Sample data arrays for random generation
 static const char* first_names[] = {
@@ -119,9 +120,20 @@ void OrderBlotter::Render() {
     // Apply filters if needed
     ApplyFilters();
     
+    // Apply grouping if needed
+    if (HasActiveGrouping()) {
+        ApplyGrouping();
+    }
+    
     RenderSelectionInfo();
     ImGui::Separator();
-    RenderTable();
+    
+    // Render appropriate table based on grouping state
+    if (HasActiveGrouping()) {
+        RenderGroupedTable();
+    } else {
+        RenderTable();
+    }
     
     ImGui::End();
 }
@@ -139,6 +151,35 @@ void OrderBlotter::RenderSelectionInfo() {
             ClearAllFilters();
         }
     }
+    
+    // Grouping controls
+    ImGui::SameLine();
+    ImGui::Text("|");
+    ImGui::SameLine();
+    
+    if (HasActiveGrouping()) {
+        const char* column_names[] = {"Order ID", "Customer", "Product", "Quantity", "Price", "Status"};
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Grouped by: %s", column_names[group_by_column_]);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Clear Grouping")) {
+            ClearGrouping();
+        }
+    } else {
+        if (ImGui::SmallButton("Group By...")) {
+            ImGui::OpenPopup("GroupByPopup");
+        }
+        
+        if (ImGui::BeginPopup("GroupByPopup")) {
+            const char* column_names[] = {"Order ID", "Customer", "Product", "Quantity", "Price", "Status"};
+            for (int i = 0; i < 6; i++) {
+                if (ImGui::MenuItem(column_names[i])) {
+                    SetGroupByColumn(i);
+                }
+            }
+            ImGui::EndPopup();
+        }
+    }
+    
     ImGui::Text("Selected: %d orders", (int)selected_order_ids_.size());
     
     // Show selected Order IDs (limited to first 10 for display)
@@ -674,5 +715,352 @@ bool OrderBlotter::PassesColumnFilter(const Order& order, int column, const Colu
         }
     }
     return true;
+}
+
+// Grouping management methods
+void OrderBlotter::SetGroupByColumn(int column) {
+    if (column >= 0 && column < 6) {
+        group_by_column_ = column;
+        groups_dirty_ = true;
+    }
+}
+
+void OrderBlotter::ClearGrouping() {
+    group_by_column_ = -1;
+    groups_.clear();
+    groups_dirty_ = true;
+}
+
+void OrderBlotter::ApplyGrouping() {
+    if (!groups_dirty_ || group_by_column_ < 0) return;
+    
+    BuildGroups();
+    groups_dirty_ = false;
+}
+
+void OrderBlotter::BuildGroups() {
+    groups_.clear();
+    
+    auto& display_orders = HasActiveFilters() ? filtered_orders_ : orders_;
+    
+    // Create a map to group orders by the selected column
+    std::map<std::string, std::vector<int>> group_map;
+    
+    for (int i = 0; i < (int)display_orders.size(); i++) {
+        std::string group_key = GetGroupKey(display_orders[i], group_by_column_);
+        group_map[group_key].push_back(i);
+    }
+    
+    // Convert map to vector of GroupInfo
+    groups_.reserve(group_map.size());
+    for (const auto& pair : group_map) {
+        GroupInfo group;
+        group.group_key = pair.first;
+        group.order_indices = pair.second;
+        group.order_count = (int)pair.second.size();
+        
+        CalculateGroupAggregates(group);
+        groups_.push_back(group);
+    }
+    
+    // Sort groups by group key
+    std::sort(groups_.begin(), groups_.end(), [](const GroupInfo& a, const GroupInfo& b) {
+        return a.group_key < b.group_key;
+    });
+}
+
+std::string OrderBlotter::GetGroupKey(const Order& order, int column) const {
+    switch (column) {
+        case 0: return std::to_string(order.id);
+        case 1: return std::string(order.customer);
+        case 2: return std::string(order.product);
+        case 3: return std::to_string(order.quantity);
+        case 4: return std::to_string((int)(order.price * 100)); // Group by price rounded to cents
+        case 5: return std::string(order.status);
+        default: return "";
+    }
+}
+
+void OrderBlotter::CalculateGroupAggregates(GroupInfo& group) const {
+    auto& display_orders = HasActiveFilters() ? filtered_orders_ : orders_;
+    
+    group.total_quantity = 0;
+    group.total_value = 0.0f;
+    float total_price = 0.0f;
+    
+    for (int index : group.order_indices) {
+        const Order& order = display_orders[index];
+        group.total_quantity += order.quantity;
+        group.total_value += order.quantity * order.price;
+        total_price += order.price;
+    }
+    
+    group.average_price = group.order_count > 0 ? total_price / group.order_count : 0.0f;
+}
+
+void OrderBlotter::RenderGroupedTable() {
+    if (ImGui::BeginTable("GroupedOrdersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY))
+    {
+        // Column setup - same as regular table
+        struct ColumnInfo {
+            const char* name;
+            ImGuiTableColumnFlags flags;
+            float width;
+            int user_id;
+        };
+        
+        ColumnInfo columns[] = {
+            {"Order ID", ImGuiTableColumnFlags_WidthFixed, 80.0f, 0},
+            {"Customer", ImGuiTableColumnFlags_WidthFixed, 120.0f, 1},
+            {"Product", ImGuiTableColumnFlags_WidthFixed, 100.0f, 2},
+            {"Quantity", ImGuiTableColumnFlags_WidthFixed, 80.0f, 3},
+            {"Price", ImGuiTableColumnFlags_WidthFixed, 80.0f, 4},
+            {"Status", ImGuiTableColumnFlags_WidthStretch, 0.0f, 5}
+        };
+        
+        // Setup columns dynamically
+        for (int i = 0; i < 6; i++) {
+            ImGui::TableSetupColumn(columns[i].name, columns[i].flags, columns[i].width, columns[i].user_id);
+        }
+        ImGui::TableHeadersRow();
+        
+        // Filter row (same as regular table)
+        ImGui::TableNextRow(ImGuiTableRowFlags_None);
+        for (int column = 0; column < 6; column++) {
+            ImGui::TableSetColumnIndex(column);
+            ImGui::PushID(column);
+            
+            ColumnFilter& filter = column_filters_[column];
+            char filter_id[64];
+            snprintf(filter_id, sizeof(filter_id), "##filter_%d", column);
+            
+            if (column == 0) { // Order ID - numeric
+                ImGui::PushItemWidth(-1);
+                if (ImGui::InputInt(filter_id, &filter.int_value)) {
+                    filter.type = FILTER_NUMERIC_EQUALS;
+                    filter.enabled = (filter.int_value != 0);
+                    filters_dirty_ = true;
+                    groups_dirty_ = true;
+                }
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                    ImGui::OpenPopup("FilterType");
+                }
+                if (ImGui::BeginPopup("FilterType")) {
+                    if (ImGui::MenuItem("Equals", nullptr, filter.type == FILTER_NUMERIC_EQUALS)) {
+                        filter.type = FILTER_NUMERIC_EQUALS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Greater than", nullptr, filter.type == FILTER_NUMERIC_GREATER)) {
+                        filter.type = FILTER_NUMERIC_GREATER; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Less than", nullptr, filter.type == FILTER_NUMERIC_LESS)) {
+                        filter.type = FILTER_NUMERIC_LESS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Clear", nullptr, !filter.enabled)) {
+                        filter.enabled = false; filter.type = FILTER_NONE; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::PopItemWidth();
+            } else if (column == 3) { // Quantity - numeric
+                ImGui::PushItemWidth(-1);
+                if (ImGui::InputInt(filter_id, &filter.int_value)) {
+                    filter.type = FILTER_NUMERIC_EQUALS; filter.enabled = (filter.int_value != 0); filters_dirty_ = true; groups_dirty_ = true;
+                }
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                    ImGui::OpenPopup("FilterType");
+                }
+                if (ImGui::BeginPopup("FilterType")) {
+                    if (ImGui::MenuItem("Equals", nullptr, filter.type == FILTER_NUMERIC_EQUALS)) {
+                        filter.type = FILTER_NUMERIC_EQUALS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Greater than", nullptr, filter.type == FILTER_NUMERIC_GREATER)) {
+                        filter.type = FILTER_NUMERIC_GREATER; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Less than", nullptr, filter.type == FILTER_NUMERIC_LESS)) {
+                        filter.type = FILTER_NUMERIC_LESS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Clear", nullptr, !filter.enabled)) {
+                        filter.enabled = false; filter.type = FILTER_NONE; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::PopItemWidth();
+            } else if (column == 4) { // Price - float numeric
+                ImGui::PushItemWidth(-1);
+                if (ImGui::InputFloat(filter_id, &filter.numeric_value, 0.0f, 0.0f, "%.2f")) {
+                    filter.type = FILTER_NUMERIC_EQUALS; filter.enabled = (filter.numeric_value != 0.0f); filters_dirty_ = true; groups_dirty_ = true;
+                }
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                    ImGui::OpenPopup("FilterType");
+                }
+                if (ImGui::BeginPopup("FilterType")) {
+                    if (ImGui::MenuItem("Equals", nullptr, filter.type == FILTER_NUMERIC_EQUALS)) {
+                        filter.type = FILTER_NUMERIC_EQUALS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Greater than", nullptr, filter.type == FILTER_NUMERIC_GREATER)) {
+                        filter.type = FILTER_NUMERIC_GREATER; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Less than", nullptr, filter.type == FILTER_NUMERIC_LESS)) {
+                        filter.type = FILTER_NUMERIC_LESS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Clear", nullptr, !filter.enabled)) {
+                        filter.enabled = false; filter.type = FILTER_NONE; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::PopItemWidth();
+            } else { // Text columns
+                ImGui::PushItemWidth(-1);
+                if (ImGui::InputText(filter_id, filter.text_value, sizeof(filter.text_value), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                    filter.type = FILTER_TEXT_CONTAINS; filter.enabled = (strlen(filter.text_value) > 0); filters_dirty_ = true; groups_dirty_ = true;
+                }
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                    ImGui::OpenPopup("FilterType");
+                }
+                if (ImGui::BeginPopup("FilterType")) {
+                    if (ImGui::MenuItem("Contains", nullptr, filter.type == FILTER_TEXT_CONTAINS)) {
+                        filter.type = FILTER_TEXT_CONTAINS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Equals", nullptr, filter.type == FILTER_TEXT_EQUALS)) {
+                        filter.type = FILTER_TEXT_EQUALS; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Starts with", nullptr, filter.type == FILTER_TEXT_STARTS_WITH)) {
+                        filter.type = FILTER_TEXT_STARTS_WITH; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Ends with", nullptr, filter.type == FILTER_TEXT_ENDS_WITH)) {
+                        filter.type = FILTER_TEXT_ENDS_WITH; filter.enabled = true; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    if (ImGui::MenuItem("Clear", nullptr, !filter.enabled)) {
+                        filter.enabled = false; filter.type = FILTER_NONE; filters_dirty_ = true; groups_dirty_ = true;
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::PopItemWidth();
+            }
+            ImGui::PopID();
+        }
+        
+        auto& display_orders = HasActiveFilters() ? filtered_orders_ : orders_;
+        
+        // Render grouped data
+        for (int group_index = 0; group_index < (int)groups_.size(); group_index++) {
+            GroupInfo& group = groups_[group_index];
+            
+            // Render group header
+            RenderGroupHeader(group, group_index);
+            
+            // Render group rows if not collapsed
+            if (!group.is_collapsed) {
+                for (int order_index : group.order_indices) {
+                    RenderGroupRow(display_orders[order_index], order_index);
+                }
+            }
+        }
+        
+        ImGui::EndTable();
+    }
+}
+
+void OrderBlotter::RenderGroupHeader(const GroupInfo& group, int group_index) {
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    
+    // Create collapsible header that spans all columns
+    char group_header[256];
+    snprintf(group_header, sizeof(group_header), "%s (%d orders)##group_%d", 
+             group.group_key.c_str(), group.order_count, group_index);
+    
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.6f, 0.8f, 0.8f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.7f, 0.9f, 0.8f));
+    
+    bool header_open = ImGui::CollapsingHeader(group_header, ImGuiTreeNodeFlags_DefaultOpen);
+    
+    // Toggle collapse state when header is clicked
+    GroupInfo& mutable_group = const_cast<GroupInfo&>(group);
+    mutable_group.is_collapsed = !header_open;
+    
+    ImGui::PopStyleColor(2);
+    
+    // Show aggregate information in other columns
+    ImGui::TableSetColumnIndex(1);
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Total Qty: %d", group.total_quantity);
+    
+    ImGui::TableSetColumnIndex(2);
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Avg Price: $%.2f", group.average_price);
+    
+    ImGui::TableSetColumnIndex(3);
+    // Empty
+    
+    ImGui::TableSetColumnIndex(4);
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Total Value: $%.2f", group.total_value);
+    
+    ImGui::TableSetColumnIndex(5);
+    // Empty
+}
+
+void OrderBlotter::RenderGroupRow(const Order& order, int row_index) {
+    bool is_selected = IsOrderSelected(order.id);
+    
+    ImGui::TableNextRow();
+    
+    // Make the entire row selectable
+    ImGui::TableSetColumnIndex(0);
+    char label[32];
+    snprintf(label, sizeof(label), "##row_%d", row_index);
+    
+    if (ImGui::Selectable(label, is_selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap))
+    {
+        ImGuiIO& input_io = ImGui::GetIO();
+        
+        if (input_io.KeyCtrl)
+        {
+            // Ctrl+Click: Toggle selection
+            ToggleOrderSelection(order.id);
+            last_selected_row_ = row_index;
+        }
+        else if (input_io.KeyShift && last_selected_row_ != -1)
+        {
+            // Shift+Click: Select range
+            SelectOrderRange(last_selected_row_, row_index);
+        }
+        else
+        {
+            // Normal click: Select only this row
+            selected_order_ids_.clear();
+            selected_order_ids_.push_back(order.id);
+            last_selected_row_ = row_index;
+        }
+    }
+    
+    // Indent the first column to show it's part of a group
+    ImGui::SameLine();
+    ImGui::Indent(20.0f);
+    ImGui::Text("%d", order.id);
+    ImGui::Unindent(20.0f);
+    
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%s", order.customer);
+    
+    ImGui::TableSetColumnIndex(2);
+    ImGui::Text("%s", order.product);
+    
+    ImGui::TableSetColumnIndex(3);
+    ImGui::Text("%d", order.quantity);
+    
+    ImGui::TableSetColumnIndex(4);
+    ImGui::Text("$%.2f", order.price);
+    
+    ImGui::TableSetColumnIndex(5);
+    // Color code status
+    if (strcmp(order.status, "Delivered") == 0)
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", order.status);
+    else if (strcmp(order.status, "Shipped") == 0)
+        ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", order.status);
+    else if (strcmp(order.status, "Processing") == 0)
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", order.status);
+    else if (strcmp(order.status, "Cancelled") == 0)
+        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", order.status);
+    else
+        ImGui::Text("%s", order.status);
 }
 
