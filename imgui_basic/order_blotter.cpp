@@ -963,9 +963,13 @@ void OrderBlotter::RenderGroupedTable() {
 
 void OrderBlotter::RenderGroupHeader(const GroupInfo& group, int group_index) {
     ImGui::TableNextRow();
+    
+    // Set a subtle background color for the entire group header row
+    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(70, 90, 120, 60));
+    
     ImGui::TableSetColumnIndex(0);
     
-    // Create collapsible header that spans all columns
+    // Create collapsible header with group name and count
     char group_header[256];
     snprintf(group_header, sizeof(group_header), "%s (%d orders)##group_%d", 
              group.group_key.c_str(), group.order_count, group_index);
@@ -981,21 +985,22 @@ void OrderBlotter::RenderGroupHeader(const GroupInfo& group, int group_index) {
     
     ImGui::PopStyleColor(2);
     
-    // Show aggregate information in other columns
+    // Show aggregate information aligned with columns
     ImGui::TableSetColumnIndex(1);
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Total Qty: %d", group.total_quantity);
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Count: %d", group.order_count);
     
     ImGui::TableSetColumnIndex(2);
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Avg Price: $%.2f", group.average_price);
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Avg: $%.2f", group.average_price);
     
     ImGui::TableSetColumnIndex(3);
-    // Empty
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Total: %d", group.total_quantity);
     
     ImGui::TableSetColumnIndex(4);
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Total Value: $%.2f", group.total_value);
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Sum: $%.2f", group.total_value);
     
     ImGui::TableSetColumnIndex(5);
-    // Empty
+    // Status column - show most common status if needed
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "---");
 }
 
 void OrderBlotter::RenderGroupRow(const Order& order, int row_index) {
