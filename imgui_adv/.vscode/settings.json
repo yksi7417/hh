@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "atomic": "cpp",
+        "thread": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "chrono": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "algorithm": "cpp",
+        "vector": "cpp",
+        "string": "cpp",
+        "memory": "cpp"
+    }
+}
