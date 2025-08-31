@@ -2,7 +2,7 @@
 #define MAIN_CONTEXT_H
 
 #include "platform.h"
-#include "../include/api.h"
+#include "include/md_api.h"
 #include "mpsc.h"
 #include <chrono>
 #include <memory>
