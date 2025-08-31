@@ -61,5 +61,24 @@
         "xutility": "cpp",
         "thread": "cpp",
         "chrono": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false,
+    "vcpkg.general.enable": true,
+    "vcpkg.target.useManifestDir": true,
+    "vcpkg.target.installDependenciesOnOpen": false,
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "cmake.configureArgs": [
+        "-DVCPKG_TARGET_TRIPLET=",
+        "-DVCPKG_APPLOCAL_DEPS=ON",
+        "-DX_VCPKG_APPLOCAL_DEPS_INSTALL=ON"
+    ],
+    "vcpkg.target.hostTriplet": "x64-windows",
+    "vcpkg.target.defaultTriplet": "",
+    "vcpkg.target.useStaticLib": false,
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "c:\\dvlp\\vcpkg/scripts/buildsystems/vcpkg.cmake"
+    },
+    "vcpkg.target.installDependencies": true,
+    "vcpkg.target.preferSystemLibs": false,
+    "vcpkg.target.useManifest": false
 }
