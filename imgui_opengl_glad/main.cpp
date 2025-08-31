@@ -1,13 +1,13 @@
-#include "IMGuiComponentList.h"
+#include "main_context.h"
+#include "IMGuiComponents.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
 using namespace std;
 
-int main()
-{
+GLFWwindow* initializeGLFWAndOpenGL(const char** glsl_version_out) {
 	if (!glfwInit())
-		return 1;
+		return nullptr;
 
 	// GL 3.0 + GLSL 130
 	const char *glsl_version = "#version 130";
@@ -19,7 +19,7 @@ int main()
 	// Create window with graphics context
 	GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui - Example", NULL, NULL);
 	if (window == NULL)
-		return 1;
+		return nullptr;
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1); // Enable vsync
 
@@ -30,7 +30,21 @@ int main()
 	glfwGetFramebufferSize(window, &screen_width, &screen_height);
 	glViewport(0, 0, screen_width, screen_height);
 
-	ImGuiComponentList myimgui;
+	if (glsl_version_out)
+		*glsl_version_out = glsl_version;
+
+	return window;
+}
+
+int main()
+{
+	const char* glsl_version;
+	GLFWwindow* window = initializeGLFWAndOpenGL(&glsl_version);
+	if (!window) {
+		return 1;
+	}
+
+	ImGuiComponents myimgui;
 	myimgui.Init(window, glsl_version);
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();

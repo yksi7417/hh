@@ -12,7 +12,7 @@ else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-add_executable (emsp "main.cpp" "IMGuiComponentList.cpp" "IMGuiComponentList.h")
+add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h")
 target_include_directories(emsp PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include)
 
 add_custom_command(TARGET emsp POST_BUILD
