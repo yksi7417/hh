@@ -23,4 +23,4 @@ target_link_libraries(emsp PRIVATE glfw)
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(emsp PRIVATE imgui::imgui)
 
-add_subdirectory(plugins)
+# add_subdirectory(plugins)  # Empty directory, commented out for now
