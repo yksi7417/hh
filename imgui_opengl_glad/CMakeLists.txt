@@ -13,6 +13,12 @@ else()
 endif()
 
 add_executable (emsp "main.cpp" "IMGuiComponentList.cpp" "IMGuiComponentList.h")
+target_include_directories(emsp PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include)
+
+add_custom_command(TARGET emsp POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      $<TARGET_FILE:md_plugin>
+      $<TARGET_FILE_DIR:emsp>)
 
 find_package(glad CONFIG REQUIRED)
 target_link_libraries(emsp PRIVATE glad::glad)
@@ -23,4 +29,4 @@ target_link_libraries(emsp PRIVATE glfw)
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(emsp PRIVATE imgui::imgui)
 
-# add_subdirectory(plugins)  # Empty directory, commented out for now
+add_subdirectory(plugins)  

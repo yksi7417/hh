@@ -1,6 +1,6 @@
 #include "IMGuiComponentList.h"
 
-void UseImGui::Init(GLFWwindow* window, const char* glsl_version) {
+void ImGuiComponentList::Init(GLFWwindow* window, const char* glsl_version) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
@@ -10,7 +10,7 @@ void UseImGui::Init(GLFWwindow* window, const char* glsl_version) {
 	ImGui::StyleColorsDark();
 }
 
-void UseImGui::NewFrame() {
+void ImGuiComponentList::NewFrame() {
 	// feed inputs to dear imgui, start new frame
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -37,7 +37,7 @@ void render_conan_logo()
 }
 
 
-void UseImGui::Update() {
+void ImGuiComponentList::Update() {
 	ImGui::Begin("Conan Logo");                          // Create a window called "Conan Logo" and append into it.
 	render_conan_logo();  // draw conan logo if user didn't override update
 	ImGui::End();
@@ -45,15 +45,16 @@ void UseImGui::Update() {
 
 }
 
-void UseImGui::Render() {
+void ImGuiComponentList::Render() {
 	// Render dear imgui into screen
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void UseImGui::Shutdown() {
+void ImGuiComponentList::Shutdown() {
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 }
+
