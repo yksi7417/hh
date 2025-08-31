@@ -1,6 +1,5 @@
 
-#ifndef PLATFORM_H
-#define PLATFORM_H
+#pragma once
 
 #include <stdint.h>
 #include <chrono>
@@ -24,5 +23,3 @@ static inline std::chrono::steady_clock::time_point lib_now()
 { 
   return std::chrono::steady_clock::now(); 
 }
-
-#endif // PLATFORM_H

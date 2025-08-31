@@ -1,6 +1,5 @@
 
-#ifndef MPSC_QUEUE_H
-#define MPSC_QUEUE_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -52,5 +51,3 @@ struct MPSCQueue {
         return true;
     }
 };
-
-#endif // MPSC_QUEUE_H

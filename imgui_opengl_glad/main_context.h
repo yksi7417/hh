@@ -1,5 +1,4 @@
-#ifndef MAIN_CONTEXT_H
-#define MAIN_CONTEXT_H
+#pragma once
 
 #include "platform.h"
 #include "include/md_api.h"
@@ -68,6 +67,3 @@ static uint64_t now_ms() {
     using namespace std::chrono;
     return duration_cast<milliseconds>(lib_now().time_since_epoch()).count();
 }
-
-
-#endif // MAIN_CONTEXT_H

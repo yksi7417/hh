@@ -1,6 +1,5 @@
 
-#ifndef MD_API_H
-#define MD_API_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,7 +8,7 @@ extern "C" {
 #include <stdint.h>
 
 /*
-  Model A (Host-owned SoA buffers)
+  Host-owned SoA buffers
   - Host allocates arrays (ts_ns, px_n, qty, side) with length = num_rows.
   - Plugin writes directly into those arrays.
   - Plugin must call begin_row_write/end_row_write around each row update.
@@ -69,5 +68,3 @@ API_EXPORT MD_API get_marketdata_api(uint32_t expected_api_version);
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
-#endif // MD_API_H
