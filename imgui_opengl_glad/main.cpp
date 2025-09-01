@@ -46,9 +46,16 @@ struct PluginHandle {
     LibHandle handle;
     MD_API api;
     void Cleanup() {
-        if (handle) lib_close(handle);
+        if (api.stop) {
+            // Stop the API if not already stopped
+            api.stop();
+            // Give threads time to finish
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        if (handle) {
+            lib_close(handle);
+        }
         handle = nullptr;
-        api.stop();
         api = {};
     }
     ~PluginHandle() {
@@ -246,14 +253,37 @@ int main(int argc, char** argv)
                 next_paint = t + 250;
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            // Proper shutdown sequence
+            printf("Shutting down...\n");
+            
+            // 1. Stop the plugin first to stop generating new data
+            plugin.api.stop();
+            printf("Plugin stopped\n");
+            
+            // 2. Give threads time to finish
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            
+            // 3. Shutdown ImGui
+            myimgui.Shutdown();
+            printf("ImGui shutdown complete\n");
+            
         }
         catch (...) {
             fprintf(stderr, "An error occurred, cleaning up\n");
+            plugin.api.stop();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            myimgui.Shutdown();
         }
+        
+        // 4. Final plugin cleanup (this will close the library)
         plugin.Cleanup();
-        myimgui.Shutdown();
+        printf("Plugin cleanup complete\n");
     }
+
+    // 5. Cleanup GLFW
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    printf("GLFW cleanup complete\n");
 
     return 0;
     }
