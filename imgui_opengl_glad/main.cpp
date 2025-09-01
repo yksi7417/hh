@@ -3,6 +3,8 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
+#include <thread>
+
 using namespace std;
 
 struct EmspConfig {
@@ -43,9 +45,18 @@ void initializeHostContext(HostContext& ctx, HostMDSlot& slot,
 struct PluginHandle {
     LibHandle handle;
     MD_API api;
+    void Cleanup() {
+        if (handle) lib_close(handle);
+        handle = nullptr;
+        api.stop();
+        api = {};
+    }
+    ~PluginHandle() {
+        Cleanup();
+    }
 };
 
-PluginHandle loadMarketDataPlugin() {
+bool loadMarketDataPlugin(PluginHandle& plugin) {
 #ifdef _WIN32
     const char* libname = "md_plugin.dll";
 #elif __APPLE__
@@ -54,8 +65,6 @@ PluginHandle loadMarketDataPlugin() {
     const char* libname = "libmd_plugin.so";
 #endif
 
-    PluginHandle plugin{};
-    
     plugin.handle = lib_open(libname);
     if (!plugin.handle) {
 #ifdef _WIN32
@@ -63,14 +72,14 @@ PluginHandle loadMarketDataPlugin() {
 #else
         fprintf(stderr, "Failed to load %s: %s\n", libname, dlerror());
 #endif
-        return plugin;
+        return false;
     }
     
     typedef MD_API (*GetApiFn)(uint32_t);
     auto get_api = (GetApiFn)lib_sym(plugin.handle, "get_marketdata_api");
     if (!get_api) {
         fprintf(stderr, "Symbol get_marketdata_api not found.\n");
-        return plugin;
+        return false;
     }
     
     const uint32_t EXPECTED_API = 1;
@@ -78,10 +87,10 @@ PluginHandle loadMarketDataPlugin() {
     if (plugin.api.api_version != EXPECTED_API || !plugin.api.bind_host_buffers || !plugin.api.start || !plugin.api.stop) {
         fprintf(stderr, "Plugin API mismatch.\n");
         plugin.api = {}; // Clear invalid API
-        return plugin;
+        return false;
     }
     
-    return plugin;
+    return true;
 }
 
 EmspConfig parseCommandLineArguments(int argc, char** argv) {
@@ -125,6 +134,19 @@ GLFWwindow* initializeGLFWAndOpenGL(const char** glsl_version_out) {
 	return window;
 }
 
+
+/**
+ * @brief Memory Model Of Main Program
+ * 
+ * This program uses a memory model that relies on stack-allocated vectors
+ * to store trading data. The vectors are initialized with a fixed size
+ * based on the command line arguments and are not resized during the
+ * program's execution.
+ *
+ * @param argc 
+ * @param argv 
+ * @return int , 0 = success, non zero is error 
+ */
 int main(int argc, char** argv) 
 {
 	const char* glsl_version;
@@ -147,37 +169,71 @@ int main(int argc, char** argv)
     HostContext ctx;
     HostMDSlot slot;
     initializeHostContext(ctx, slot, config, ts_ns, px_n, qty, side);
-
     printf("Host (console) rows=%u writers=%u updates/sec=%u\n", config.num_rows, config.writers, config.ups);
 
-    PluginHandle plugin = loadMarketDataPlugin();
-    if (!plugin.handle || plugin.api.api_version == 0) {
-        return 1;
+    PluginHandle plugin; 
+
+    if (loadMarketDataPlugin(plugin)) {
+        if (!plugin.handle) {
+            fprintf(stderr, "loading handle failed.\n");
+            return 1;
+        }
+        
+        if (plugin.api.api_version == 0) {
+            fprintf(stderr, "api_version is 0 which is invalid \n");
+            return 1;
+        }
+
+        if (plugin.api.bind_host_buffers(&slot) != 0) {
+            fprintf(stderr, "bind_host_buffers failed.\n");
+            return 1;
+        }
+
+        plugin.api.start(config.writers, config.ups);
+        uint64_t t = now_ms();
+        uint64_t next_paint = t + 100;
+
+        ImGuiComponents myimgui;
+        myimgui.Init(window, glsl_version);
+        while (!glfwWindowShouldClose(window)) {
+            glfwPollEvents();
+
+            uint32_t id;
+            while (ctx.q.pop(id)) {
+                if (id < config.num_rows) ctx.dirty[id] = 1;
+            }
+
+            if (t >= next_paint) {
+                uint32_t printed = 0;
+                for (uint32_t i=0; i<config.num_rows; ++i) {
+                    if (!ctx.dirty[i]) continue;
+                    ctx.dirty[i] = 0;
+
+                    HostContext::RowSnap snap{};
+                    bool ok=false;
+                    for (int tries=0; tries<4 && !ok; ++tries) ok = row_snapshot(&ctx, &slot, i, snap);
+                    if (!ok) continue;
+
+                    if (std::memcmp(&snap, &ctx.last[i], sizeof snap) != 0) {
+                        std::printf("Row %6u  ts=%lld  px=%lld  qty=%lld  side=%u\n",
+                                    i, (long long)snap.ts, (long long)snap.px, (long long)snap.qty, snap.side);
+                        ctx.last[i] = snap;
+                        ++printed;
+                    }
+                }
+                next_paint = t + 250;
+            }
+
+            glClear(GL_COLOR_BUFFER_BIT);
+            myimgui.NewFrame();
+            myimgui.Update(ctx, slot, next_paint);
+            myimgui.Render();
+            glfwSwapBuffers(window);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        myimgui.Shutdown();
     }
-    
-    // Extract api to stack variable for cleaner usage
-    MD_API api = plugin.api;
-    
-    if (api.bind_host_buffers(&slot) != 0) {
-        fprintf(stderr, "bind_host_buffers failed.\n");
-        return 1;
-    }
 
-    api.start(config.writers, config.ups);
+    return 0;
 
-
-	ImGuiComponents myimgui;
-	myimgui.Init(window, glsl_version);
-	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
-
-        glClear(GL_COLOR_BUFFER_BIT);
-		myimgui.NewFrame();
-		myimgui.Update();
-		myimgui.Render();
-		glfwSwapBuffers(window);
-	}
-	myimgui.Shutdown();
-
-	return 0;
 }

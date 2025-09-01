@@ -1,4 +1,6 @@
 #include "IMGuiComponents.h"
+#include "main_context.h"
+#include <cstring>
 
 void ImGuiComponents::Init(GLFWwindow* window, const char* glsl_version) {
 	IMGUI_CHECKVERSION();
@@ -18,31 +20,64 @@ void ImGuiComponents::NewFrame() {
 }
 
 
-void render_conan_logo()
-{
-	ImDrawList *draw_list = ImGui::GetWindowDrawList();
-	float sz = 300.0f;
-	static ImVec4 col1 = ImVec4(68.0f / 255.0f, 83.0f / 255.0f, 89.0f / 255.0f, 1.0f);
-	static ImVec4 col2 = ImVec4(40.0f / 255.0f, 60.0f / 255.0f, 80.0f / 255.0f, 1.0f);
-	static ImVec4 col3 = ImVec4(50.0f / 255.0f, 65.0f / 255.0f, 82.0f / 255.0f, 1.0f);
-	static ImVec4 col4 = ImVec4(20.0f / 255.0f, 40.0f / 255.0f, 60.0f / 255.0f, 1.0f);
-	const ImVec2 p = ImGui::GetCursorScreenPos();
-	float x = p.x + 4.0f, y = p.y + 4.0f;
-	draw_list->AddQuadFilled(ImVec2(x, y + 0.25f * sz), ImVec2(x + 0.5f * sz, y + 0.5f * sz), ImVec2(x + sz, y + 0.25f * sz), ImVec2(x + 0.5f * sz, y), ImColor(col1));
-	draw_list->AddQuadFilled(ImVec2(x, y + 0.25f * sz), ImVec2(x + 0.5f * sz, y + 0.5f * sz), ImVec2(x + 0.5f * sz, y + 1.0f * sz), ImVec2(x, y + 0.75f * sz), ImColor(col2));
-	draw_list->AddQuadFilled(ImVec2(x + 0.5f * sz, y + 0.5f * sz), ImVec2(x + sz, y + 0.25f * sz), ImVec2(x + sz, y + 0.75f * sz), ImVec2(x + 0.5f * sz, y + 1.0f * sz), ImColor(col3));
-	draw_list->AddLine(ImVec2(x + 0.75f * sz, y + 0.375f * sz), ImVec2(x + 0.75f * sz, y + 0.875f * sz), ImColor(col4));
-	draw_list->AddBezierCubic(ImVec2(x + 0.72f * sz, y + 0.24f * sz), ImVec2(x + 0.68f * sz, y + 0.15f * sz), ImVec2(x + 0.48f * sz, y + 0.13f * sz), ImVec2(x + 0.39f * sz, y + 0.17f * sz), ImColor(col4), 3.0f);
-	draw_list->AddBezierCubic(ImVec2(x + 0.39f * sz, y + 0.17f * sz), ImVec2(x + 0.2f * sz, y + 0.25f * sz), ImVec2(x + 0.3f * sz, y + 0.35f * sz), ImVec2(x + 0.49f * sz, y + 0.38f * sz), ImColor(col4), 3.0f);
+void imgui_render_table(HostContext& ctx, const HostMDSlot& slot, const bool should_refresh) {
+    uint32_t id;
+    while (ctx.q.pop(id)) {
+        if (id < ctx.num_rows) ctx.dirty[id] = 1;
+    }
+
+    if (ImGui::Begin("MarketData")) {
+        ImGui::Text("Rows: %u", ctx.num_rows);
+        ImGui::Separator();
+        ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
+        if (ImGui::BeginTable("md_table", 5, flags)) {
+            ImGui::TableSetupScrollFreeze(0,1);
+            ImGui::TableSetupColumn("ID");
+            ImGui::TableSetupColumn("TS (ns)");
+            ImGui::TableSetupColumn("PX (n)");
+            ImGui::TableSetupColumn("QT (n)");
+            ImGui::TableSetupColumn("SIDE");
+            ImGui::TableHeadersRow();
+
+            ImGuiListClipper clipper;
+            clipper.Begin((int)ctx.num_rows);
+            while (clipper.Step()) {
+                for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                    HostContext::RowSnap snap = ctx.last[i];
+                    if (should_refresh && ctx.dirty[i]) {
+                        ctx.dirty[i] = 0;
+                        HostContext::RowSnap tmp{};
+                        bool ok=false;
+                        for (int tries=0; tries<2 && !ok; ++tries) ok = row_snapshot(&ctx, &slot, (uint32_t)i, tmp);
+                        if (ok) {
+                            if (std::memcmp(&tmp, &ctx.last[i], sizeof tmp) != 0) {
+                                ctx.last[i] = tmp;
+                            }
+                            snap = ctx.last[i];
+                        }
+                    }
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0); ImGui::Text("%d", i);
+                    ImGui::TableSetColumnIndex(1); ImGui::Text("%lld", (long long)snap.ts);
+                    ImGui::TableSetColumnIndex(2); ImGui::Text("%lld", (long long)snap.px);
+                    ImGui::TableSetColumnIndex(3); ImGui::Text("%lld", (long long)snap.qty);
+                    ImGui::TableSetColumnIndex(4); ImGui::Text("%u",  (unsigned)snap.side);
+                }
+            }
+            ImGui::EndTable();
+        }
+        ImGui::End();
+    }
+
 }
 
-
-void ImGuiComponents::Update() {
-	ImGui::Begin("Conan Logo");                          // Create a window called "Conan Logo" and append into it.
-	render_conan_logo();  // draw conan logo if user didn't override update
+void ImGuiComponents::Update(HostContext& ctx, const HostMDSlot& slot, uint64_t& next_paint_ms) {
+	ImGui::Begin("Update Tables");
+    uint64_t t = now_ms();
+    bool should_refresh = (t >= next_paint_ms);
+	imgui_render_table(ctx, slot, should_refresh);
+    if (should_refresh) next_paint_ms = t + 250;
 	ImGui::End();
-
-
 }
 
 void ImGuiComponents::Render() {
