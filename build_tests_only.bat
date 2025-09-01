@@ -6,15 +6,22 @@ cd /d "%~dp0"
 echo.
 echo Checking build prerequisites...
 
-REM Check for PowerShell Core
+REM Check for PowerShell Core first, then Windows PowerShell
 pwsh.exe --version >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: PowerShell Core ^(pwsh.exe^) is required but not found!
-    echo Please install with: winget install Microsoft.PowerShell
-    echo Why needed: Google Test's test discovery and CTest operations require PowerShell Core
-    exit /b 1
-) else (
+if %ERRORLEVEL% equ 0 (
     echo ✓ PowerShell Core detected
+    set POWERSHELL_CMD=pwsh.exe
+) else (
+    powershell.exe -Command "exit 0" >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        echo ✓ Windows PowerShell detected (PowerShell Core preferred but this will work)
+        set POWERSHELL_CMD=powershell.exe
+    ) else (
+        echo ERROR: No PowerShell found! Either PowerShell Core ^(pwsh.exe^) or Windows PowerShell ^(powershell.exe^) is required
+        echo For best compatibility, install PowerShell Core with: winget install Microsoft.PowerShell
+        echo Why needed: Google Test's test discovery and CTest operations require PowerShell
+        exit /b 1
+    )
 )
 
 echo All prerequisites satisfied!

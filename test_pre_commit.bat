@@ -4,11 +4,18 @@ REM Builds and runs tests with minimal output for commit hook context
 
 cd /d "%~dp0"
 
-REM Quick prerequisite check
+REM Quick prerequisite check - accept either PowerShell Core or Windows PowerShell
 pwsh.exe --version >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: PowerShell Core required for tests
-    exit /b 1
+if %ERRORLEVEL% equ 0 (
+    set POWERSHELL_CMD=pwsh.exe
+) else (
+    powershell.exe -Command "exit 0" >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        set POWERSHELL_CMD=powershell.exe
+    ) else (
+        echo ERROR: PowerShell required for tests
+        exit /b 1
+    )
 )
 
 echo Building and running tests...

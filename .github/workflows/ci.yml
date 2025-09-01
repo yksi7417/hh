@@ -19,15 +19,23 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.3
     
-    - name: Install PowerShell Core
+    - name: Setup PowerShell and Prerequisites
       shell: powershell
       run: |
-        winget install --id Microsoft.PowerShell --source winget --silent --accept-source-agreements --accept-package-agreements
+        # Check if PowerShell Core (pwsh) is available
+        $pwshAvailable = Get-Command pwsh -ErrorAction SilentlyContinue
+        if ($pwshAvailable) {
+          Write-Host "✓ PowerShell Core is available: $($pwshAvailable.Version)"
+          pwsh --version
+        } else {
+          Write-Host "PowerShell Core not found, but we can use Windows PowerShell for the build script"
+          $PSVersionTable.PSVersion
+        }
     
     - name: Run Tests (No GUI Dependencies)
       shell: powershell
       run: |
-        # Use build_tests_only.bat which doesn't require vcpkg (now located at root)
+        # Run build script which now supports both PowerShell Core and Windows PowerShell
         .\build_tests_only.bat
     
     - name: Upload test results
