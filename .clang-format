@@ -1,6 +1,5 @@
 ---
 Language: Cpp
-Standard: Cpp17
 BasedOnStyle: Google
 IndentWidth: 4
 TabWidth: 4

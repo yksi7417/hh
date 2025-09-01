@@ -93,7 +93,14 @@ jobs:
     
     - name: Check code formatting
       run: |
-        find imgui_opengl_glad -name "*.cpp" -o -name "*.h" | grep -E "(core|ui)" | xargs clang-format-14 --dry-run --Werror
+        # Find and format check core and ui files
+        FILES=$(find imgui_opengl_glad -name "*.cpp" -o -name "*.h" | grep -E "(core|ui)" || true)
+        if [ -n "$FILES" ]; then
+          echo "$FILES" | xargs clang-format-14 --dry-run --Werror
+          echo "Code formatting check completed"
+        else
+          echo "No core/ui files found to check"
+        fi
     
     - name: Run static analysis (cppcheck)
       run: |
