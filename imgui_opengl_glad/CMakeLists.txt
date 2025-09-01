@@ -12,8 +12,42 @@ else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h")
-target_include_directories(emsp PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include)
+# ImGui source files
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
+set(IMGUI_SOURCES
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_impl_glfw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui_opengl3_glad.cpp
+)
+
+# ImGui Test Engine source files
+set(IMGUI_TEST_ENGINE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui_test_engine/imgui_test_engine)
+set(IMGUI_TEST_ENGINE_SOURCES
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_context.cpp
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_coroutine.cpp
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_engine.cpp
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_exporters.cpp
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_perftool.cpp
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_ui.cpp
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_utils.cpp
+    ${IMGUI_TEST_ENGINE_DIR}/imgui_capture_tool.cpp
+)
+
+add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h" ${IMGUI_SOURCES})
+
+target_compile_definitions(emsp PRIVATE 
+    IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+    IMGUI_IMPL_OPENGL_LOADER_GLAD
+)
+
+target_include_directories(emsp PRIVATE 
+    ${CMAKE_CURRENT_LIST_DIR}/../include
+    ${IMGUI_DIR}
+)
 
 add_custom_command(TARGET emsp POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -26,7 +60,8 @@ target_link_libraries(emsp PRIVATE glad::glad)
 find_package(glfw3 CONFIG REQUIRED)
 target_link_libraries(emsp PRIVATE glfw)
 
-find_package(imgui CONFIG REQUIRED)
-target_link_libraries(emsp PRIVATE imgui::imgui)
+# Remove imgui from vcpkg dependencies since we're using local version
+# find_package(imgui CONFIG REQUIRED)
+# target_link_libraries(emsp PRIVATE imgui::imgui)
 
-add_subdirectory(plugins)  
+add_subdirectory(plugins)
