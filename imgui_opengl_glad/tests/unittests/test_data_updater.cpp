@@ -8,7 +8,8 @@
 /**
  * @brief Test fixture for DataUpdater tests using Google Test
  */
-class DataUpdaterTest : public ::testing::Test {
+class DataUpdaterTest : public ::testing::Test
+{
 protected:
     EmspConfig config;
     HostContext ctx;
@@ -18,8 +19,9 @@ protected:
     std::vector<int64_t> qty;
     std::vector<uint8_t> side;
 
-    void SetUp() override {
-        config.num_rows = 10;  // Small number for testing
+    void SetUp() override
+    {
+        config.num_rows = 10; // Small number for testing
         config.writers = 1;
         config.ups = 100;
         
@@ -32,16 +34,19 @@ protected:
         initializeContext();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Cleanup is automatic due to RAII
     }
 
 private:
-    void initializeContext() {
+    void initializeContext()
+    {
         // Initialize HostContext
         ctx.num_rows = config.num_rows;
         ctx.seq = std::make_unique<std::atomic<uint32_t>[]>(config.num_rows);
-        for (uint32_t i = 0; i < config.num_rows; ++i) {
+        for (uint32_t i = 0; i < config.num_rows; ++i)
+        {
             ctx.seq[i].store(0, std::memory_order_relaxed);
         }
         ctx.dirty.assign(config.num_rows, 0);
@@ -65,7 +70,8 @@ private:
 /**
  * @brief Test that function processes queued updates correctly
  */
-TEST_F(DataUpdaterTest, ProcessesQueuedUpdates) {
+TEST_F(DataUpdaterTest, ProcessesQueuedUpdates)
+{
     // Add some updates to the queue
     ctx.q.push(1);
     ctx.q.push(3);
@@ -88,7 +94,8 @@ TEST_F(DataUpdaterTest, ProcessesQueuedUpdates) {
 /**
  * @brief Test that function ignores invalid row IDs
  */
-TEST_F(DataUpdaterTest, IgnoresInvalidRowIds) {
+TEST_F(DataUpdaterTest, IgnoresInvalidRowIds)
+{
     // Add valid and invalid updates to the queue
     ctx.q.push(1);                    // valid
     ctx.q.push(config.num_rows + 5);  // invalid - out of bounds
@@ -109,7 +116,8 @@ TEST_F(DataUpdaterTest, IgnoresInvalidRowIds) {
 /**
  * @brief Test that function processes snapshots when time >= next_paint
  */
-TEST_F(DataUpdaterTest, ProcessesSnapshotsWhenTimeReached) {
+TEST_F(DataUpdaterTest, ProcessesSnapshotsWhenTimeReached)
+{
     // Set up some test data
     ts_ns[2] = 123456789;
     px_n[2] = 100500;  // Price in nano units
@@ -138,7 +146,8 @@ TEST_F(DataUpdaterTest, ProcessesSnapshotsWhenTimeReached) {
 /**
  * @brief Test that function skips processing when time < next_paint
  */
-TEST_F(DataUpdaterTest, SkipsProcessingWhenTimeNotReached) {
+TEST_F(DataUpdaterTest, SkipsProcessingWhenTimeNotReached)
+{
     // Mark a row as dirty
     ctx.dirty[1] = 1;
     
@@ -154,7 +163,8 @@ TEST_F(DataUpdaterTest, SkipsProcessingWhenTimeNotReached) {
 /**
  * @brief Test that function handles concurrent writes gracefully
  */
-TEST_F(DataUpdaterTest, HandlesConcurrentWrites) {
+TEST_F(DataUpdaterTest, HandlesConcurrentWrites)
+{
     // Set up data
     ts_ns[4] = 987654321;
     px_n[4] = 200750;
@@ -185,9 +195,11 @@ TEST_F(DataUpdaterTest, HandlesConcurrentWrites) {
 /**
  * @brief Test the complete workflow
  */
-TEST_F(DataUpdaterTest, CompleteWorkflow) {
+TEST_F(DataUpdaterTest, CompleteWorkflow)
+{
     // Set up test data for multiple rows
-    for (uint32_t i = 0; i < 3; ++i) {
+    for (uint32_t i = 0; i < 3; ++i)
+    {
         ts_ns[i] = 1000000 + i * 1000;
         px_n[i] = 100000 + i * 50;
         qty[i] = 100 + i * 10;
@@ -233,7 +245,8 @@ TEST_F(DataUpdaterTest, CompleteWorkflow) {
 /**
  * @brief Test edge case with empty queue
  */
-TEST_F(DataUpdaterTest, HandlesEmptyQueue) {
+TEST_F(DataUpdaterTest, HandlesEmptyQueue)
+{
     // Don't add anything to queue
     
     uint64_t current_time = 200;
@@ -243,7 +256,8 @@ TEST_F(DataUpdaterTest, HandlesEmptyQueue) {
     EXPECT_NO_THROW(update_latest_data_from_context(ctx, config, current_time, next_paint, slot));
     
     // All dirty flags should remain 0
-    for (uint32_t i = 0; i < config.num_rows; ++i) {
+    for (uint32_t i = 0; i < config.num_rows; ++i)
+    {
         EXPECT_EQ(ctx.dirty[i], 0);
     }
 }
@@ -251,13 +265,15 @@ TEST_F(DataUpdaterTest, HandlesEmptyQueue) {
 /**
  * @brief Test performance characteristics (basic timing test)
  */
-TEST_F(DataUpdaterTest, PerformanceCharacteristics) {
+TEST_F(DataUpdaterTest, PerformanceCharacteristics)
+{
     // Set up a larger dataset for performance testing
     EmspConfig large_config;
     large_config.num_rows = 1000;
     
     // Add many updates to queue
-    for (uint32_t i = 0; i < 100; ++i) {
+    for (uint32_t i = 0; i < 100; ++i)
+    {
         ctx.q.push(i % config.num_rows);
     }
     
