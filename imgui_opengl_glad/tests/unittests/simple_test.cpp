@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "../../mpsc.h"
-#include "../../data_updater.h"
+#include "../../core/mpsc.h"
+#include "../../core/data_updater.h"
 #include <memory>
 #include <vector>
 #include <cstring>

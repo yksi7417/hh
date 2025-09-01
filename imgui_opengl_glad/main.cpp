@@ -1,6 +1,6 @@
-#include "main_context.h"
-#include "IMGuiComponents.h"
-#include "data_updater.h"
+#include "core/main_context.h"
+#include "ui/IMGuiComponents.h"
+#include "core/data_updater.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 

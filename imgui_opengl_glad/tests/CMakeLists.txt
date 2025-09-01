@@ -23,13 +23,14 @@ FetchContent_MakeAvailable(googletest)
 add_executable(unit_tests
     unittests/simple_test.cpp
     unittests/test_data_updater.cpp
-    ../data_updater.cpp
+    ../core/data_updater.cpp
 )
 
 # Set up include directories
 target_include_directories(unit_tests PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/../../include
     ${CMAKE_CURRENT_LIST_DIR}/..
+    ${CMAKE_CURRENT_LIST_DIR}/../core
 )
 
 # Link against GTest using FetchContent

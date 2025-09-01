@@ -43,7 +43,7 @@ if(WITH_IMGUI)
         ${IMGUI_TEST_ENGINE_DIR}/imgui_capture_tool.cpp
     )
 
-    add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h" "MarketDataTable.cpp" "MarketDataTable.h" "data_updater.cpp" "data_updater.h" ${IMGUI_SOURCES})
+    add_executable (emsp "main.cpp" "ui/IMGuiComponents.cpp" "ui/IMGuiComponents.h" "ui/MarketDataTable.cpp" "ui/MarketDataTable.h" "core/data_updater.cpp" "core/data_updater.h" ${IMGUI_SOURCES})
 
     target_compile_definitions(emsp PRIVATE 
         IMGUI_IMPL_OPENGL_LOADER_CUSTOM
@@ -52,6 +52,8 @@ if(WITH_IMGUI)
 
     target_include_directories(emsp PRIVATE 
         ${CMAKE_CURRENT_LIST_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui
         ${IMGUI_DIR}
     )
 

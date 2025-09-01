@@ -1,6 +1,6 @@
 #include "IMGuiComponents.h"
 #include "MarketDataTable.h"
-#include "main_context.h"
+#include "../core/main_context.h"
 #include <cstring>
 #include "imgui.h"
 

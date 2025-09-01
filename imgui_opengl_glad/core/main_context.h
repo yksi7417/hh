@@ -1,7 +1,7 @@
 #pragma once
 
 #include "platform.h"
-#include "include/md_api.h"
+#include "../include/md_api.h"
 #include "mpsc.h"
 #include <chrono>
 #include <memory>
