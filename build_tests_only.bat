@@ -25,6 +25,7 @@ echo For full GUI build, use build.bat or set up vcpkg properly
 
 echo.
 echo Configuring CMake (tests only)...
+cd imgui_opengl_glad
 cmake -B build_tests -S . -DBUILD_TESTS=ON -DWITH_IMGUI=OFF
 
 echo.

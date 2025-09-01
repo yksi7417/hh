@@ -26,9 +26,8 @@ jobs:
     
     - name: Run Tests (No GUI Dependencies)
       shell: powershell
-      working-directory: imgui_opengl_glad
       run: |
-        # Use build_tests_only.bat which doesn't require vcpkg
+        # Use build_tests_only.bat which doesn't require vcpkg (now located at root)
         .\build_tests_only.bat
     
     - name: Upload test results
@@ -37,8 +36,8 @@ jobs:
       with:
         name: test-results-windows
         path: |
-          imgui_opengl_glad/build/Testing/**/*.xml
-          imgui_opengl_glad/build/Testing/**/*.log
+          imgui_opengl_glad/build_tests/Testing/**/*.xml
+          imgui_opengl_glad/build_tests/Testing/**/*.log
 
   build-and-test-linux:
     runs-on: ubuntu-latest
@@ -58,17 +57,17 @@ jobs:
     - name: Configure CMake (Tests Only)
       working-directory: imgui_opengl_glad
       run: |
-        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DWITH_IMGUI=OFF -G Ninja
+        cmake -B build_tests -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DWITH_IMGUI=OFF -G Ninja
     
     - name: Build Tests
       working-directory: imgui_opengl_glad
       run: |
-        cmake --build build --target unit_tests
+        cmake --build build_tests --target unit_tests
     
     - name: Run Tests
       working-directory: imgui_opengl_glad
       run: |
-        cd build
+        cd build_tests
         ctest --verbose --output-on-failure
     
     - name: Upload test results
@@ -77,8 +76,8 @@ jobs:
       with:
         name: test-results-linux
         path: |
-          imgui_opengl_glad/build/Testing/**/*.xml
-          imgui_opengl_glad/build/Testing/**/*.log
+          imgui_opengl_glad/build_tests/Testing/**/*.xml
+          imgui_opengl_glad/build_tests/Testing/**/*.log
 
   code-quality:
     runs-on: ubuntu-latest
@@ -94,9 +93,9 @@ jobs:
     
     - name: Check code formatting
       run: |
-        find imgui_opengl_glad -name "*.cpp" -o -name "*.h" | grep -E "(data_updater|test_)" | xargs clang-format-14 --dry-run --Werror
+        find imgui_opengl_glad -name "*.cpp" -o -name "*.h" | grep -E "(core|ui)" | xargs clang-format-14 --dry-run --Werror
     
     - name: Run static analysis (cppcheck)
       run: |
         sudo apt-get install -y cppcheck
-        cppcheck --enable=warning,performance,portability --error-exitcode=1 imgui_opengl_glad/data_updater.cpp imgui_opengl_glad/data_updater.h
+        cppcheck --enable=warning,performance,portability --error-exitcode=1 imgui_opengl_glad/core/data_updater.cpp imgui_opengl_glad/core/data_updater.h

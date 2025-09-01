@@ -36,13 +36,15 @@ This project is a high-performance market data processing application built with
 
 ## Quick Start
 
+**All build and linting scripts are located in the root directory for convenience.**
+
 ### Building Tests Only (Recommended for CI/Development)
 ```bash
-cd imgui_opengl_glad
 # Use the dedicated test build script (includes prerequisite checks)
 .\build_tests_only.bat
 
 # OR manual commands:
+cd imgui_opengl_glad
 cmake -B build_tests -S . -DBUILD_TESTS=ON -DWITH_IMGUI=OFF
 cmake --build build_tests --config Debug --target unit_tests
 cd build_tests && ctest -C Debug --verbose
@@ -50,23 +52,26 @@ cd build_tests && ctest -C Debug --verbose
 
 ### Building Full GUI Application
 ```bash
-cd imgui_opengl_glad
 # Use the GUI build script (includes vcpkg setup and dependency management)
 .\build_gui.bat
 
 # OR manual commands (after setting up vcpkg):
+cd imgui_opengl_glad
 cmake -B build_gui -S . -DBUILD_TESTS=OFF -DWITH_IMGUI=ON -DCMAKE_TOOLCHAIN_FILE=c:/dvlp/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build build_gui --config Debug
 ```
 
 ## Build Scripts
-- **`build_tests_only.bat`** - Fast tests-only build (uses `build_tests/` directory, no GUI dependencies)
-- **`build_gui.bat`** - GUI application build (uses `build_gui/` directory, includes vcpkg setup)
+- **`build_tests_only.bat`** - Fast tests-only build (uses `imgui_opengl_glad/build_tests/` directory, no GUI dependencies)
+- **`build_gui.bat`** - GUI application build (uses `imgui_opengl_glad/build_gui/` directory, includes vcpkg setup)
 - **`build.bat`** - Interactive selector (currently empty - user can customize)
 
+**Note**: All build scripts are located in the root directory and handle navigation to subdirectories automatically.
+
 **Note**: The build scripts use separate build directories to avoid configuration conflicts:
-- Tests use `build_tests/` and build without external dependencies
-- GUI builds use `build_gui/` and include vcpkg dependencies (GLFW, GLAD)
+- Tests use `imgui_opengl_glad/build_tests/` and build without external dependencies
+- GUI builds use `imgui_opengl_glad/build_gui/` and include vcpkg dependencies (GLFW, GLAD)
+- All scripts are located in the root directory for easy access
 
 ## Code Quality and Linting
 
@@ -74,13 +79,11 @@ The project enforces design principles and code quality through automated lintin
 
 ### **Run Code Quality Checks**
 ```bash
-cd imgui_opengl_glad
-
 # Run all quality checks (design principles + static analysis)
 .\lint.bat
 
 # Check specific files only
-.\lint.bat core/data_updater.cpp ui/MarketDataTable.cpp
+.\lint.bat imgui_opengl_glad/core/data_updater.cpp imgui_opengl_glad/ui/MarketDataTable.cpp
 ```
 
 ### **Design Principles Enforced**
@@ -133,7 +136,7 @@ The project includes a comprehensive test suite with 14+ test cases covering:
 Run tests with:
 ```bash
 # After running build_tests_only.bat
-cd build_tests
+cd imgui_opengl_glad\build_tests
 ctest -C Debug --output-on-failure --verbose
 
 # OR run the executable directly

@@ -38,7 +38,6 @@ echo All prerequisites satisfied!
 
 echo.
 echo Installing GUI dependencies with vcpkg...
-cd c:\dvlp\hh
 c:\dvlp\vcpkg\vcpkg.exe install --triplet x64-windows
 if %ERRORLEVEL% neq 0 (
     echo vcpkg install failed!
@@ -47,7 +46,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo Configuring CMake for GUI build...
-cd c:\dvlp\hh\imgui_opengl_glad
+cd imgui_opengl_glad
 cmake -B build_gui -S . ^
     -DCMAKE_TOOLCHAIN_FILE=c:/dvlp/vcpkg/scripts/buildsystems/vcpkg.cmake ^
     -DBUILD_TESTS=OFF ^

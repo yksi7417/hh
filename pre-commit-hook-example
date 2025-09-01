@@ -4,10 +4,7 @@
 
 echo "Running EMSP code quality checks..."
 
-# Change to the project directory
-cd imgui_opengl_glad
-
-# Run the unified linter (design principles + static analysis)
+# Run the unified linter (design principles + static analysis) from root
 ./lint.bat
 
 if [ $? -ne 0 ]; then

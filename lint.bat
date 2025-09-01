@@ -37,11 +37,11 @@ if %ERRORLEVEL% equ 0 (
     echo Running clang-tidy on core and ui files...
     
     REM Check if compile_commands.json exists
-    if exist "build_tests\compile_commands.json" (
-        clang-tidy -p build_tests core/*.cpp ui/*.cpp --format-style=file
+    if exist "imgui_opengl_glad\build_tests\compile_commands.json" (
+        clang-tidy -p imgui_opengl_glad\build_tests imgui_opengl_glad\core\*.cpp imgui_opengl_glad\ui\*.cpp --format-style=file
         if %ERRORLEVEL% neq 0 set HAS_ERRORS=1
-    ) else if exist "build_gui\compile_commands.json" (
-        clang-tidy -p build_gui core/*.cpp ui/*.cpp --format-style=file  
+    ) else if exist "imgui_opengl_glad\build_gui\compile_commands.json" (
+        clang-tidy -p imgui_opengl_glad\build_gui imgui_opengl_glad\core\*.cpp imgui_opengl_glad\ui\*.cpp --format-style=file  
         if %ERRORLEVEL% neq 0 set HAS_ERRORS=1
     ) else (
         echo Warning: No compile_commands.json found. Run cmake configure first.
