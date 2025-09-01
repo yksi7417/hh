@@ -1,0 +1,36 @@
+# Custom clang-tidy configuration for EMSP project
+# Enforces design principles: prefer RAII, smart pointers over raw new/delete
+
+Checks: >
+  -*,
+  cppcoreguidelines-owning-memory,
+  cppcoreguidelines-no-malloc,
+  modernize-make-shared,
+  modernize-make-unique,
+  modernize-use-auto,
+  modernize-use-smart-ptr,
+  performance-*,
+  readability-*,
+  bugprone-*,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -modernize-use-trailing-return-type
+
+# Configuration for specific checks
+CheckOptions:
+  - key: cppcoreguidelines-owning-memory.LegacyResourceProducers
+    value: 'malloc;calloc;realloc;strdup;strndup'
+  - key: cppcoreguidelines-owning-memory.LegacyResourceConsumers  
+    value: 'free'
+  - key: modernize-make-shared.MakeSmartPtrFunction
+    value: 'std::make_shared'
+  - key: modernize-make-unique.MakeSmartPtrFunction
+    value: 'std::make_unique'
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '15'
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: 'std::shared_ptr;std::unique_ptr'
+
+WarningsAsErrors: 'cppcoreguidelines-owning-memory,modernize-make-shared,modernize-make-unique'
+
+HeaderFilterRegex: '(core|ui)/.*\.(h|hpp)$'

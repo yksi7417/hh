@@ -4,6 +4,9 @@ project(EMSP LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Export compile commands for clang-tidy
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Enable testing
 include(CTest)
 enable_testing()

@@ -1,0 +1,27 @@
+#!/bin/sh
+# Pre-commit hook to enforce design principles and code quality
+# Copy this file to .git/hooks/pre-commit and make it executable
+
+echo "Running EMSP code quality checks..."
+
+# Change to the project directory
+cd imgui_opengl_glad
+
+# Run the unified linter (design principles + static analysis)
+./lint.bat
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Commit rejected due to code quality issues"
+    echo "Please fix the issues or add documentation justifications before committing"
+    echo ""
+    echo "Examples of valid justifications:"
+    echo "  // Performance critical: tight loop for market data processing"
+    echo "  /// @brief Legacy API compatibility requires raw pointer management"  
+    echo "  /** NOTE: Manual memory management required for plugin interface */"
+    echo ""
+    exit 1
+fi
+
+echo "✅ All code quality checks passed"
+exit 0

@@ -28,6 +28,12 @@ This project is a high-performance market data processing application built with
    - For managing dependencies like GLFW and GLAD
    - Only needed when `WITH_IMGUI=ON`
 
+### Optional (for enhanced linting)
+5. **clang-tidy** (part of LLVM/Clang tools)
+   - **Installation**: Download from [LLVM Releases](https://releases.llvm.org/) or via package manager
+   - **Why useful**: Industry-standard static analysis for additional code quality checks
+   - **Note**: The linter works without it, but provides more comprehensive analysis with it
+
 ## Quick Start
 
 ### Building Tests Only (Recommended for CI/Development)
@@ -62,6 +68,62 @@ cmake --build build_gui --config Debug
 - Tests use `build_tests/` and build without external dependencies
 - GUI builds use `build_gui/` and include vcpkg dependencies (GLFW, GLAD)
 
+## Code Quality and Linting
+
+The project enforces design principles and code quality through automated linting:
+
+### **Run Code Quality Checks**
+```bash
+cd imgui_opengl_glad
+
+# Run all quality checks (design principles + static analysis)
+.\lint.bat
+
+# Check specific files only
+.\lint.bat core/data_updater.cpp ui/MarketDataTable.cpp
+```
+
+### **Design Principles Enforced**
+- ❌ Raw `new`/`delete` without documentation justification
+- ❌ `malloc`/`free` usage in C++ code (use RAII instead)
+- ❌ Performance-critical code without documentation
+- ✅ Document with nearby comments for exceptions
+
+### **Valid Documentation Examples**
+```cpp
+// Performance critical: tight loop for market data processing
+while (ctx.q.pop(id)) { ... }
+
+/// @brief Legacy API compatibility requires raw pointer management
+MyType* ptr = new MyType();
+
+/** NOTE: Manual memory management required for plugin interface */
+delete plugin_instance;
+```
+
+### **Install Pre-commit Hook (Recommended)**
+```bash
+# Copy the pre-commit hook
+copy pre-commit-hook-example .git\hooks\pre-commit
+
+# On Linux/Mac, make it executable:
+# chmod +x .git/hooks/pre-commit
+```
+
+The pre-commit hook will automatically run code quality checks before each commit, preventing violations from entering the repository.
+
+### **Troubleshooting Linting**
+```bash
+# If Python is not found
+winget install Python.Python.3.12
+
+# If you get "execution policy" errors on Windows
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Skip linting for urgent commits (not recommended)
+git commit --no-verify -m "urgent fix"
+```
+
 ## Testing
 The project includes a comprehensive test suite with 14+ test cases covering:
 - Core data structures (MPSCQueue, EmspConfig)
@@ -80,5 +142,7 @@ ctest -C Debug --output-on-failure --verbose
 
 ## Project Structure
 - `imgui_opengl_glad/` - Main application code
+  - `core/` - Business logic, data processing (no UI dependencies)
+  - `ui/` - User interface components (ImGui-dependent)
 - `imgui_opengl_glad/tests/` - Comprehensive test suite using Google Test
 - `imgui_opengl_glad/plugins/` - Plugin architecture for market data sources
