@@ -4,7 +4,12 @@ project(EMSP LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable testing
+include(CTest)
+enable_testing()
+
 option(WITH_IMGUI "Build GUI EMSP Host using Dear ImGui + GLFW + OpenGL3" ON)
+option(BUILD_TESTS "Build unit tests" OFF)
 
 if (MSVC)
   add_compile_options(/W3)
@@ -12,52 +17,59 @@ else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# ImGui source files
-set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
-set(IMGUI_SOURCES
-    ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
-    ${IMGUI_DIR}/imgui_draw.cpp
-    ${IMGUI_DIR}/imgui_tables.cpp
-    ${IMGUI_DIR}/imgui_widgets.cpp
-    ${IMGUI_DIR}/imgui_impl_glfw.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/imgui_opengl3_glad.cpp
-)
+# ImGui source files (only if WITH_IMGUI is enabled)
+if(WITH_IMGUI)
+    set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
+    set(IMGUI_SOURCES
+        ${IMGUI_DIR}/imgui.cpp
+        ${IMGUI_DIR}/imgui_demo.cpp
+        ${IMGUI_DIR}/imgui_draw.cpp
+        ${IMGUI_DIR}/imgui_tables.cpp
+        ${IMGUI_DIR}/imgui_widgets.cpp
+        ${IMGUI_DIR}/imgui_impl_glfw.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/imgui_opengl3_glad.cpp
+    )
 
-# ImGui Test Engine source files
-set(IMGUI_TEST_ENGINE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui_test_engine/imgui_test_engine)
-set(IMGUI_TEST_ENGINE_SOURCES
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_context.cpp
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_coroutine.cpp
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_engine.cpp
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_exporters.cpp
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_perftool.cpp
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_ui.cpp
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_te_utils.cpp
-    ${IMGUI_TEST_ENGINE_DIR}/imgui_capture_tool.cpp
-)
+    # ImGui Test Engine source files
+    set(IMGUI_TEST_ENGINE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui_test_engine/imgui_test_engine)
+    set(IMGUI_TEST_ENGINE_SOURCES
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_te_context.cpp
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_te_coroutine.cpp
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_te_engine.cpp
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_te_exporters.cpp
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_te_perftool.cpp
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_te_ui.cpp
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_te_utils.cpp
+        ${IMGUI_TEST_ENGINE_DIR}/imgui_capture_tool.cpp
+    )
 
-add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h" "MarketDataTable.cpp" "MarketDataTable.h" ${IMGUI_SOURCES})
+    add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h" "MarketDataTable.cpp" "MarketDataTable.h" "data_updater.cpp" "data_updater.h" ${IMGUI_SOURCES})
 
-target_compile_definitions(emsp PRIVATE 
-    IMGUI_IMPL_OPENGL_LOADER_CUSTOM
-    IMGUI_IMPL_OPENGL_LOADER_GLAD
-)
+    target_compile_definitions(emsp PRIVATE 
+        IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+        IMGUI_IMPL_OPENGL_LOADER_GLAD
+    )
 
-target_include_directories(emsp PRIVATE 
-    ${CMAKE_CURRENT_LIST_DIR}/../include
-    ${IMGUI_DIR}
-)
+    target_include_directories(emsp PRIVATE 
+        ${CMAKE_CURRENT_LIST_DIR}/../include
+        ${IMGUI_DIR}
+    )
 
-add_custom_command(TARGET emsp POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      $<TARGET_FILE:md_plugin>
-      $<TARGET_FILE_DIR:emsp>)
+    add_custom_command(TARGET emsp POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          $<TARGET_FILE:md_plugin>
+          $<TARGET_FILE_DIR:emsp>)
 
-find_package(glad CONFIG REQUIRED)
-target_link_libraries(emsp PRIVATE glad::glad)
+    find_package(glad CONFIG REQUIRED)
+    target_link_libraries(emsp PRIVATE glad::glad)
 
-find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(emsp PRIVATE glfw)
+    find_package(glfw3 CONFIG REQUIRED)
+    target_link_libraries(emsp PRIVATE glfw)
 
-add_subdirectory(plugins)
+    add_subdirectory(plugins)
+endif()
+
+# Add tests subdirectory if BUILD_TESTS is enabled
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

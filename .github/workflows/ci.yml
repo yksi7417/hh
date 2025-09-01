@@ -1,0 +1,109 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.3
+    
+    - name: Configure CMake
+      shell: powershell
+      working-directory: imgui_opengl_glad
+      run: |
+        cmake -B build -S . -DBUILD_TESTS=ON
+    
+    - name: Build
+      shell: powershell
+      working-directory: imgui_opengl_glad
+      run: |
+        cmake --build build --config Release
+    
+    - name: Run Tests
+      shell: powershell
+      working-directory: imgui_opengl_glad
+      run: |
+        cd build
+        ctest --build-config Release --verbose --output-on-failure
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-windows
+        path: |
+          imgui_opengl_glad/build/Testing/**/*.xml
+          imgui_opengl_glad/build/Testing/**/*.log
+
+  build-and-test-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build pkg-config
+        sudo apt-get install -y libglfw3-dev libgl1-mesa-dev
+    
+    - name: Configure CMake
+      working-directory: imgui_opengl_glad
+      run: |
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -G Ninja
+    
+    - name: Build
+      working-directory: imgui_opengl_glad
+      run: |
+        cmake --build build
+    
+    - name: Run Tests
+      working-directory: imgui_opengl_glad
+      run: |
+        cd build
+        ctest --verbose --output-on-failure
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-linux
+        path: |
+          imgui_opengl_glad/build/Testing/**/*.xml
+          imgui_opengl_glad/build/Testing/**/*.log
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format-14
+    
+    - name: Check code formatting
+      run: |
+        find imgui_opengl_glad -name "*.cpp" -o -name "*.h" | grep -E "(data_updater|test_)" | xargs clang-format-14 --dry-run --Werror
+    
+    - name: Run static analysis (cppcheck)
+      run: |
+        sudo apt-get install -y cppcheck
+        cppcheck --enable=warning,performance,portability --error-exitcode=1 imgui_opengl_glad/data_updater.cpp imgui_opengl_glad/data_updater.h

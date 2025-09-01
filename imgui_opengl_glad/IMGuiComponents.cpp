@@ -41,11 +41,6 @@ void ImGuiComponents::NewFrame() {
 }
 
 
-void imgui_render_table(HostContext& ctx, const HostMDSlot& slot, const bool should_refresh) {
-    // This function is now replaced by MarketDataTable::Render()
-    // Keeping for compatibility but it's no longer used
-}
-
 void ImGuiComponents::Update(HostContext& ctx, const HostMDSlot& slot, uint64_t& next_paint_ms) {
     // Initialize market data table if not done yet
     static bool table_initialized = false;

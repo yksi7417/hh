@@ -1,17 +1,12 @@
 #include "main_context.h"
 #include "IMGuiComponents.h"
+#include "data_updater.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
 #include <thread>
 
 using namespace std;
-
-struct EmspConfig {
-    uint32_t num_rows = 10000;
-    uint32_t writers = 2;
-    uint32_t ups = 50000;
-};
 
 void initializeHostContext(HostContext& ctx, HostMDSlot& slot, 
                           const EmspConfig& config, 
@@ -154,43 +149,6 @@ GLFWwindow* initializeGLFWAndOpenGL(const char** glsl_version_out) {
 		*glsl_version_out = glsl_version;
 
 	return window;
-}
-
-
-void update_latest_data_from_context(HostContext &ctx, EmspConfig &config, uint64_t t, uint64_t next_paint, HostMDSlot &slot)
-{
-    uint32_t id;
-    while (ctx.q.pop(id))
-    {
-        if (id < config.num_rows)
-            ctx.dirty[id] = 1;
-    }
-
-    if (t >= next_paint)
-    {
-        uint32_t printed = 0;
-        for (uint32_t i = 0; i < config.num_rows; ++i)
-        {
-            if (!ctx.dirty[i])
-                continue;
-            ctx.dirty[i] = 0;
-
-            HostContext::RowSnap snap{};
-            bool ok = false;
-            for (int tries = 0; tries < 4 && !ok; ++tries)
-                ok = row_snapshot(&ctx, &slot, i, snap);
-            if (!ok)
-                continue;
-
-            if (std::memcmp(&snap, &ctx.last[i], sizeof snap) != 0)
-            {
-                std::printf("Row %6u  ts=%lld  px=%lld  qty=%lld  side=%u\n",
-                            i, (long long)snap.ts, (long long)snap.px, (long long)snap.qty, snap.side);
-                ctx.last[i] = snap;
-                ++printed;
-            }
-        }
-    }
 }
 
 
