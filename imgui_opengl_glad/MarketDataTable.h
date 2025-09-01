@@ -126,6 +126,7 @@ private:
     
     // Utility functions to access raw data by index
     int64_t GetColumnValue(uint32_t row_index, int column, HostContext& ctx, const HostMDSlot& slot) const;
+    uint8_t GetSideValue(uint32_t row_index, const HostMDSlot& slot) const; // Direct immutable access
     const char* GetSideString(uint8_t side) const;
     ImVec4 GetSideColor(uint8_t side) const;
 };

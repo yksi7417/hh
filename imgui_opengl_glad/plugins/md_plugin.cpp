@@ -20,7 +20,7 @@ static void writer_thread(uint32_t thread_id, uint32_t updates_per_sec) {
     std::uniform_int_distribution<uint32_t> row_dist(0, g_slot->num_rows-1);
     std::uniform_int_distribution<int64_t>  px_jump(-50, 50);
     std::uniform_int_distribution<int64_t>  qty_jump(1, 100);
-    std::uniform_int_distribution<int>      side_pick(1, 3);
+    // Note: side is no longer updated - it's immutable after initialization
 
     double per_update_ns = 1e9 / (double)updates_per_sec;
     auto next_tick = steady_clock::now();
@@ -30,13 +30,13 @@ static void writer_thread(uint32_t thread_id, uint32_t updates_per_sec) {
         int64_t ts = duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count();
         int64_t px = g_slot->px_n[i] + px_jump(rng);
         int64_t qt = g_slot->qty[i] + qty_jump(rng);
-        uint8_t sd = (uint8_t)side_pick(rng);
+        // Side is immutable - no longer updated here
 
         g_slot->begin_row_write(g_slot, i);
         g_slot->ts_ns[i] = ts;
         g_slot->px_n [i] = px;
         g_slot->qty  [i] = qt;
-        g_slot->side [i] = sd;
+        // g_slot->side [i] = sd;  // REMOVED: side is immutable
         g_slot->end_row_write(g_slot, i);
         g_slot->notify_row_dirty(g_slot, i);
 
@@ -47,6 +47,15 @@ static void writer_thread(uint32_t thread_id, uint32_t updates_per_sec) {
 
 extern "C" int bind_host_buffers_c(HostMDSlot* slot) {
     g_slot = slot;
+    
+    // Initialize side values once - they remain immutable during simulation
+    std::mt19937_64 init_rng((uint64_t)steady_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> side_pick(0, 1); // 0 = Buy, 1 = Sell
+    
+    for (uint32_t i = 0; i < slot->num_rows; ++i) {
+        slot->side[i] = (uint8_t)side_pick(init_rng);
+    }
+    
     return 0;
 }
 

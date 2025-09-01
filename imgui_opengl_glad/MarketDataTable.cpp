@@ -377,8 +377,9 @@ void MarketDataTable::RenderTable(HostContext& ctx, const HostMDSlot& slot) {
                 ImGui::Text("%lld", (long long)snap.qty);
                 
                 ImGui::TableSetColumnIndex(4);
-                ImVec4 side_color = GetSideColor(snap.side);
-                ImGui::TextColored(side_color, "%s", GetSideString(snap.side));
+                uint8_t side_val = GetSideValue(row_index, slot);  // Direct immutable access
+                ImVec4 side_color = GetSideColor(side_val);
+                ImGui::TextColored(side_color, "%s", GetSideString(side_val));
             }
         }
         
@@ -469,8 +470,8 @@ bool MarketDataTable::PassesColumnFilter(uint32_t row_index, int column, const C
         
         case 4: // Side column (text)
         {
-            const HostContext::RowSnap& snap = ctx.last[row_index];
-            const char* text = GetSideString(snap.side);
+            uint8_t side_val = GetSideValue(row_index, slot);  // Direct immutable access
+            const char* text = GetSideString(side_val);
             switch (filter.type) {
                 case FILTER_TEXT_CONTAINS:
                     return strstr(text, filter.text_value) != nullptr;
@@ -508,39 +509,191 @@ void MarketDataTable::ClearGrouping() {
 }
 
 void MarketDataTable::ApplyGrouping(HostContext& ctx, const HostMDSlot& slot) {
-    // Simplified - grouping functionality can be added later if needed
-    // For now, just clear the dirty flag
+    if (!groups_dirty_ || group_by_column_ < 0) return;
+    
+    BuildGroups(ctx, slot);
     groups_dirty_ = false;
 }
 
 void MarketDataTable::BuildGroups(HostContext& ctx, const HostMDSlot& slot) {
-    // Placeholder for future implementation
+    groups_.clear();
+    
+    auto& display_indices = HasActiveFilters() ? filtered_indices_ : all_row_indices_;
+    
+    // Create a map to group rows by the selected column
+    std::map<std::string, std::vector<uint32_t>> group_map;
+    
+    for (uint32_t row_index : display_indices) {
+        std::string group_key = GetGroupKey(row_index, group_by_column_, ctx, slot);
+        group_map[group_key].push_back(row_index);
+    }
+    
+    // Convert map to vector of GroupInfo
+    groups_.reserve(group_map.size());
+    for (const auto& pair : group_map) {
+        GroupInfo group;
+        group.group_key = pair.first;
+        group.row_indices = pair.second;
+        group.row_count = (int)pair.second.size();
+        
+        CalculateGroupAggregates(group, ctx, slot);
+        groups_.push_back(group);
+    }
+    
+    // Sort groups by group key
+    std::sort(groups_.begin(), groups_.end(), [](const GroupInfo& a, const GroupInfo& b) {
+        return a.group_key < b.group_key;
+    });
 }
 
 void MarketDataTable::RenderGroupedTable(HostContext& ctx, const HostMDSlot& slot) {
-    // Fallback to regular table for now
-    RenderTable(ctx, slot);
+    ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | 
+                           ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | 
+                           ImGuiTableFlags_SizingStretchProp;
+    
+    if (ImGui::BeginTable("GroupedMarketDataTable", 5, flags)) {
+        // Column setup - same as regular table
+        ImGui::TableSetupScrollFreeze(0, 1);
+        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 80.0f, 0);
+        ImGui::TableSetupColumn("Timestamp", ImGuiTableColumnFlags_WidthFixed, 120.0f, 1);
+        ImGui::TableSetupColumn("Price", ImGuiTableColumnFlags_WidthFixed, 100.0f, 2);
+        ImGui::TableSetupColumn("Quantity", ImGuiTableColumnFlags_WidthFixed, 100.0f, 3);
+        ImGui::TableSetupColumn("Side", ImGuiTableColumnFlags_WidthStretch, 0.0f, 4);
+        ImGui::TableHeadersRow();
+        
+        // Render grouped data
+        for (int group_index = 0; group_index < (int)groups_.size(); group_index++) {
+            GroupInfo& group = groups_[group_index];
+            
+            // Render group header
+            RenderGroupHeader(group, group_index);
+            
+            // Render group rows if not collapsed
+            if (!group.is_collapsed) {
+                for (int i = 0; i < (int)group.row_indices.size(); i++) {
+                    uint32_t row_index = group.row_indices[i];
+                    RenderGroupRow(row_index, i, ctx, slot);
+                }
+            }
+        }
+        
+        ImGui::EndTable();
+    }
 }
 
 void MarketDataTable::RenderGroupHeader(const GroupInfo& group, int group_index) {
-    // Placeholder
+    ImGui::TableNextRow();
+    
+    // Set a subtle background color for the entire group header row
+    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(70, 90, 120, 60));
+    
+    ImGui::TableSetColumnIndex(0);
+    
+    // Create collapsible header with group name and count
+    char group_header[256];
+    snprintf(group_header, sizeof(group_header), "%s (%d rows)##group_%d", 
+             group.group_key.c_str(), group.row_count, group_index);
+    
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.6f, 0.8f, 0.8f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.7f, 0.9f, 0.8f));
+    
+    bool header_open = ImGui::CollapsingHeader(group_header, ImGuiTreeNodeFlags_DefaultOpen);
+    
+    // Toggle collapse state when header is clicked
+    GroupInfo& mutable_group = const_cast<GroupInfo&>(group);
+    mutable_group.is_collapsed = !header_open;
+    
+    ImGui::PopStyleColor(2);
+    
+    // Show aggregate information aligned with columns
+    ImGui::TableSetColumnIndex(1);
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Avg TS: %lld", (long long)group.avg_timestamp);
+    
+    ImGui::TableSetColumnIndex(2);
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Avg Price: %lld", (long long)group.avg_price);
+    
+    ImGui::TableSetColumnIndex(3);
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Total Qty: %lld", (long long)group.total_qty);
+    
+    ImGui::TableSetColumnIndex(4);
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Count: %d", group.row_count);
 }
 
 void MarketDataTable::RenderGroupRow(uint32_t row_index, int display_row, HostContext& ctx, const HostMDSlot& slot) {
-    // Placeholder
+    const HostContext::RowSnap& snap = ctx.last[row_index];
+    bool is_selected = IsRowSelected(row_index);
+    
+    ImGui::TableNextRow();
+    
+    // Make the entire row selectable
+    ImGui::TableSetColumnIndex(0);
+    char label[32];
+    snprintf(label, sizeof(label), "##row_%d", display_row);
+    
+    if (ImGui::Selectable(label, is_selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap)) {
+        ImGuiIO& input_io = ImGui::GetIO();
+        
+        if (input_io.KeyCtrl) {
+            // Ctrl+Click: Toggle selection
+            ToggleRowSelection(row_index);
+            last_selected_row_ = display_row;
+        } else if (input_io.KeyShift && last_selected_row_ != -1) {
+            // Shift+Click: Select range
+            SelectRowRange(last_selected_row_, display_row);
+        } else {
+            // Normal click: Select only this row
+            selected_row_ids_.clear();
+            selected_row_ids_.push_back(row_index);
+            last_selected_row_ = display_row;
+        }
+    }
+    
+    // Indent the first column to show it's part of a group
+    ImGui::SameLine();
+    ImGui::Indent(20.0f);
+    ImGui::Text("%u", row_index);
+    ImGui::Unindent(20.0f);
+    
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%lld", (long long)snap.ts);
+    
+    ImGui::TableSetColumnIndex(2);
+    ImGui::Text("%lld", (long long)snap.px);
+    
+    ImGui::TableSetColumnIndex(3);
+    ImGui::Text("%lld", (long long)snap.qty);
+    
+    ImGui::TableSetColumnIndex(4);
+    uint8_t side_val = GetSideValue(row_index, slot);  // Direct immutable access
+    ImVec4 side_color = GetSideColor(side_val);
+    ImGui::TextColored(side_color, "%s", GetSideString(side_val));
 }
 
 std::string MarketDataTable::GetGroupKey(uint32_t row_index, int column, HostContext& ctx, const HostMDSlot& slot) const {
     int64_t value = GetColumnValue(row_index, column, ctx, slot);
     if (column == 4) {
-        const HostContext::RowSnap& snap = ctx.last[row_index];
-        return std::string(GetSideString(snap.side));
+        uint8_t side_val = GetSideValue(row_index, slot);  // Direct immutable access
+        return std::string(GetSideString(side_val));
     }
     return std::to_string(value);
 }
 
 void MarketDataTable::CalculateGroupAggregates(GroupInfo& group, HostContext& ctx, const HostMDSlot& slot) const {
-    // Placeholder
+    group.total_qty = 0;
+    int64_t total_price = 0;
+    int64_t total_timestamp = 0;
+    
+    for (uint32_t row_index : group.row_indices) {
+        if (row_index < ctx.num_rows) {
+            const HostContext::RowSnap& snap = ctx.last[row_index];
+            group.total_qty += snap.qty;
+            total_price += snap.px;
+            total_timestamp += snap.ts;
+        }
+    }
+    
+    group.avg_price = group.row_count > 0 ? total_price / group.row_count : 0;
+    group.avg_timestamp = group.row_count > 0 ? total_timestamp / group.row_count : 0;
 }
 
 // Utility functions to access raw data by index - NO COPYING!
@@ -553,9 +706,15 @@ int64_t MarketDataTable::GetColumnValue(uint32_t row_index, int column, HostCont
         case 1: return snap.ts;             // Timestamp
         case 2: return snap.px;             // Price  
         case 3: return snap.qty;            // Quantity
-        case 4: return (int64_t)snap.side;  // Side
+        case 4: return (int64_t)GetSideValue(row_index, slot);  // Side (immutable)
         default: return 0;
     }
+}
+
+// Direct access to immutable side value
+uint8_t MarketDataTable::GetSideValue(uint32_t row_index, const HostMDSlot& slot) const {
+    if (row_index >= slot.num_rows) return 0;
+    return slot.side[row_index];  // Direct access - no snapshot needed since it's immutable
 }
 
 // Utility functions
