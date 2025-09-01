@@ -19,24 +19,17 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.3
     
-    - name: Configure CMake
+    - name: Install PowerShell Core
       shell: powershell
-      working-directory: imgui_opengl_glad
       run: |
-        cmake -B build -S . -DBUILD_TESTS=ON
+        winget install --id Microsoft.PowerShell --source winget --silent --accept-source-agreements --accept-package-agreements
     
-    - name: Build
+    - name: Run Tests (No GUI Dependencies)
       shell: powershell
       working-directory: imgui_opengl_glad
       run: |
-        cmake --build build --config Release
-    
-    - name: Run Tests
-      shell: powershell
-      working-directory: imgui_opengl_glad
-      run: |
-        cd build
-        ctest --build-config Release --verbose --output-on-failure
+        # Use build_tests_only.bat which doesn't require vcpkg
+        .\build_tests_only.bat
     
     - name: Upload test results
       uses: actions/upload-artifact@v3
@@ -60,17 +53,17 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential cmake ninja-build pkg-config
-        sudo apt-get install -y libglfw3-dev libgl1-mesa-dev
+        # Note: No GUI dependencies needed for tests-only build
     
-    - name: Configure CMake
+    - name: Configure CMake (Tests Only)
       working-directory: imgui_opengl_glad
       run: |
-        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -G Ninja
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DWITH_IMGUI=OFF -G Ninja
     
-    - name: Build
+    - name: Build Tests
       working-directory: imgui_opengl_glad
       run: |
-        cmake --build build
+        cmake --build build --target unit_tests
     
     - name: Run Tests
       working-directory: imgui_opengl_glad

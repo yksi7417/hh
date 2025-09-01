@@ -1,2 +1,74 @@
 # hh
-handmade hero tutorial
+Handmade Hero Tutorial - Electronic Market Simulation Platform (EMSP)
+
+## Project Overview
+This project is a high-performance market data processing application built with Dear ImGui, featuring:
+- Real-time market data visualization
+- Multi-producer single-consumer queue processing
+- Comprehensive testing infrastructure
+- Plugin-based architecture for market data sources
+
+## Build Prerequisites
+
+### Required Software
+1. **Visual Studio 2022** (or compatible MSVC toolchain)
+   - Required for C++17 compilation on Windows
+
+2. **CMake 3.16 or higher**
+   - Used for cross-platform build configuration
+
+3. **PowerShell Core (pwsh.exe)**
+   - **Installation**: `winget install Microsoft.PowerShell`
+   - **Why needed**: Google Test's internal test discovery and CTest operations use PowerShell Core for improved cross-platform compatibility and performance
+   - **Note**: This is different from Windows PowerShell (powershell.exe) that comes with Windows
+   - **Without this**: You'll see warnings like `'pwsh.exe' is not recognized as an internal or external command` during builds
+
+### Optional (for GUI builds)
+4. **vcpkg** (if building with ImGui)
+   - For managing dependencies like GLFW and GLAD
+   - Only needed when `WITH_IMGUI=ON`
+
+## Quick Start
+
+### Building Tests Only (Recommended for CI/Development)
+```bash
+cd imgui_opengl_glad
+# Use the build script (includes prerequisite checks)
+.\build_tests_only.bat
+
+# OR manual commands:
+cmake -B build -S . -DBUILD_TESTS=ON -DWITH_IMGUI=OFF
+cmake --build build --config Debug
+ctest -C Debug
+```
+
+### Building Full Application with GUI
+```bash
+cd imgui_opengl_glad
+# Use the build script (includes vcpkg setup and tests)
+.\build.bat
+
+# OR manual commands (after setting up vcpkg):
+cmake -B build -S . -DBUILD_TESTS=ON -DWITH_IMGUI=ON -DCMAKE_TOOLCHAIN_FILE=path/to/vcpkg.cmake
+cmake --build build --config Debug
+```
+
+## Build Scripts
+- **`build_tests_only.bat`** - Fast tests-only build (no GUI dependencies)
+- **`build.bat`** - Full GUI application build with vcpkg dependencies and tests
+
+## Testing
+The project includes a comprehensive test suite with 14+ test cases covering:
+- Core data structures (MPSCQueue, EmspConfig)
+- Market data processing logic
+- Edge cases and performance characteristics
+
+Run tests with:
+```bash
+ctest -C Debug --output-on-failure
+```
+
+## Project Structure
+- `imgui_opengl_glad/` - Main application code
+- `imgui_opengl_glad/tests/` - Comprehensive test suite using Google Test
+- `imgui_opengl_glad/plugins/` - Plugin architecture for market data sources

@@ -22,7 +22,10 @@ imgui_opengl_glad/
 
 1. **CMake 3.16+** - For build system  
 2. **Visual Studio 2022** (Windows) or **GCC/Clang** (Linux)
-3. **Internet connection** - GTest is automatically downloaded via FetchContent
+3. **PowerShell Core** (Windows) - `winget install Microsoft.PowerShell`
+   - Required for Google Test's test discovery and CTest operations
+   - Prevents "pwsh.exe not found" warnings during build
+4. **Internet connection** - GTest is automatically downloaded via FetchContent
 
 ### Local Development
 
