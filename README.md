@@ -33,29 +33,34 @@ This project is a high-performance market data processing application built with
 ### Building Tests Only (Recommended for CI/Development)
 ```bash
 cd imgui_opengl_glad
-# Use the build script (includes prerequisite checks)
+# Use the dedicated test build script (includes prerequisite checks)
 .\build_tests_only.bat
 
 # OR manual commands:
-cmake -B build -S . -DBUILD_TESTS=ON -DWITH_IMGUI=OFF
-cmake --build build --config Debug
-ctest -C Debug
+cmake -B build_tests -S . -DBUILD_TESTS=ON -DWITH_IMGUI=OFF
+cmake --build build_tests --config Debug --target unit_tests
+cd build_tests && ctest -C Debug --verbose
 ```
 
-### Building Full Application with GUI
+### Building Full GUI Application
 ```bash
 cd imgui_opengl_glad
-# Use the build script (includes vcpkg setup and tests)
-.\build.bat
+# Use the GUI build script (includes vcpkg setup and dependency management)
+.\build_gui.bat
 
 # OR manual commands (after setting up vcpkg):
-cmake -B build -S . -DBUILD_TESTS=ON -DWITH_IMGUI=ON -DCMAKE_TOOLCHAIN_FILE=path/to/vcpkg.cmake
-cmake --build build --config Debug
+cmake -B build_gui -S . -DBUILD_TESTS=OFF -DWITH_IMGUI=ON -DCMAKE_TOOLCHAIN_FILE=c:/dvlp/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build_gui --config Debug
 ```
 
 ## Build Scripts
-- **`build_tests_only.bat`** - Fast tests-only build (no GUI dependencies)
-- **`build.bat`** - Full GUI application build with vcpkg dependencies and tests
+- **`build_tests_only.bat`** - Fast tests-only build (uses `build_tests/` directory, no GUI dependencies)
+- **`build_gui.bat`** - GUI application build (uses `build_gui/` directory, includes vcpkg setup)
+- **`build.bat`** - Interactive selector (currently empty - user can customize)
+
+**Note**: The build scripts use separate build directories to avoid configuration conflicts:
+- Tests use `build_tests/` and build without external dependencies
+- GUI builds use `build_gui/` and include vcpkg dependencies (GLFW, GLAD)
 
 ## Testing
 The project includes a comprehensive test suite with 14+ test cases covering:
@@ -65,7 +70,12 @@ The project includes a comprehensive test suite with 14+ test cases covering:
 
 Run tests with:
 ```bash
-ctest -C Debug --output-on-failure
+# After running build_tests_only.bat
+cd build_tests
+ctest -C Debug --output-on-failure --verbose
+
+# OR run the executable directly
+.\Debug\unit_tests.exe
 ```
 
 ## Project Structure
