@@ -4,8 +4,20 @@
 
 echo "Running EMSP code quality checks..."
 
-# Run the unified linter (design principles + static analysis) from root
-./lint.bat
+# Detect if we're on Windows (Git Bash/MSYS) or Unix-like system
+if [ -f "lint.bat" ]; then
+    # On Windows, run the batch file
+    if command -v cmd.exe >/dev/null 2>&1; then
+        # Windows with cmd.exe available
+        cmd.exe /c "lint.bat"
+    else
+        # Git Bash on Windows
+        ./lint.bat
+    fi
+else
+    echo "Error: lint.bat not found in repository root"
+    exit 1
+fi
 
 if [ $? -ne 0 ]; then
     echo ""
