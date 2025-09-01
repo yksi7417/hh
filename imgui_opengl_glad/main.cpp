@@ -2,6 +2,7 @@
 #include "IMGuiComponents.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
+#include "imgui.h"
 
 #include <thread>
 
@@ -56,7 +57,7 @@ struct PluginHandle {
     }
 };
 
-bool loadMarketDataPlugin(PluginHandle& plugin) {
+bool loadMarketDataPlugin(PluginHandle& plugin, HostMDSlot &slot) {
 #ifdef _WIN32
     const char* libname = "md_plugin.dll";
 #elif __APPLE__
@@ -87,6 +88,21 @@ bool loadMarketDataPlugin(PluginHandle& plugin) {
     if (plugin.api.api_version != EXPECTED_API || !plugin.api.bind_host_buffers || !plugin.api.start || !plugin.api.stop) {
         fprintf(stderr, "Plugin API mismatch.\n");
         plugin.api = {}; // Clear invalid API
+        return false;
+    }
+
+    if (!plugin.handle) {
+        fprintf(stderr, "loading handle failed.\n");
+        return false;
+    }
+
+    if (plugin.api.api_version == 0) {
+        fprintf(stderr, "api_version is 0 which is invalid \n");
+        return false;
+    }
+
+    if (plugin.api.bind_host_buffers(&slot) != 0) {
+        fprintf(stderr, "bind_host_buffers failed.\n");
         return false;
     }
     
@@ -135,17 +151,54 @@ GLFWwindow* initializeGLFWAndOpenGL(const char** glsl_version_out) {
 }
 
 
+void update_latest_data_from_context(HostContext &ctx, EmspConfig &config, uint64_t t, uint64_t next_paint, HostMDSlot &slot)
+{
+    uint32_t id;
+    while (ctx.q.pop(id))
+    {
+        if (id < config.num_rows)
+            ctx.dirty[id] = 1;
+    }
+
+    if (t >= next_paint)
+    {
+        uint32_t printed = 0;
+        for (uint32_t i = 0; i < config.num_rows; ++i)
+        {
+            if (!ctx.dirty[i])
+                continue;
+            ctx.dirty[i] = 0;
+
+            HostContext::RowSnap snap{};
+            bool ok = false;
+            for (int tries = 0; tries < 4 && !ok; ++tries)
+                ok = row_snapshot(&ctx, &slot, i, snap);
+            if (!ok)
+                continue;
+
+            if (std::memcmp(&snap, &ctx.last[i], sizeof snap) != 0)
+            {
+                std::printf("Row %6u  ts=%lld  px=%lld  qty=%lld  side=%u\n",
+                            i, (long long)snap.ts, (long long)snap.px, (long long)snap.qty, snap.side);
+                ctx.last[i] = snap;
+                ++printed;
+            }
+        }
+    }
+}
+
+
 /**
  * @brief Memory Model Of Main Program
- * 
+ *
  * This program uses a memory model that relies on stack-allocated vectors
  * to store trading data. The vectors are initialized with a fixed size
  * based on the command line arguments and are not resized during the
  * program's execution.
  *
- * @param argc 
- * @param argv 
- * @return int , 0 = success, non zero is error 
+ * @param argc
+ * @param argv
+ * @return int , 0 = success, non zero is error
  */
 int main(int argc, char** argv) 
 {
@@ -173,67 +226,45 @@ int main(int argc, char** argv)
 
     PluginHandle plugin; 
 
-    if (loadMarketDataPlugin(plugin)) {
-        if (!plugin.handle) {
-            fprintf(stderr, "loading handle failed.\n");
-            return 1;
-        }
-        
-        if (plugin.api.api_version == 0) {
-            fprintf(stderr, "api_version is 0 which is invalid \n");
-            return 1;
-        }
-
-        if (plugin.api.bind_host_buffers(&slot) != 0) {
-            fprintf(stderr, "bind_host_buffers failed.\n");
-            return 1;
-        }
-
+    if (loadMarketDataPlugin(plugin, slot)) {
         plugin.api.start(config.writers, config.ups);
         uint64_t t = now_ms();
         uint64_t next_paint = t + 100;
 
         ImGuiComponents myimgui;
-        myimgui.Init(window, glsl_version);
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
+        try {
+            myimgui.Init(window, glsl_version);
+            while (!glfwWindowShouldClose(window)) {
+                glfwPollEvents();
 
-            uint32_t id;
-            while (ctx.q.pop(id)) {
-                if (id < config.num_rows) ctx.dirty[id] = 1;
-            }
+                update_latest_data_from_context(ctx, config, t, next_paint, slot);
 
-            if (t >= next_paint) {
-                uint32_t printed = 0;
-                for (uint32_t i=0; i<config.num_rows; ++i) {
-                    if (!ctx.dirty[i]) continue;
-                    ctx.dirty[i] = 0;
-
-                    HostContext::RowSnap snap{};
-                    bool ok=false;
-                    for (int tries=0; tries<4 && !ok; ++tries) ok = row_snapshot(&ctx, &slot, i, snap);
-                    if (!ok) continue;
-
-                    if (std::memcmp(&snap, &ctx.last[i], sizeof snap) != 0) {
-                        std::printf("Row %6u  ts=%lld  px=%lld  qty=%lld  side=%u\n",
-                                    i, (long long)snap.ts, (long long)snap.px, (long long)snap.qty, snap.side);
-                        ctx.last[i] = snap;
-                        ++printed;
-                    }
+                glClear(GL_COLOR_BUFFER_BIT);
+                myimgui.NewFrame();
+                myimgui.Update(ctx, slot, next_paint);
+                myimgui.Render();
+                
+                // Update and Render additional Platform Windows
+                ImGuiIO& io = ImGui::GetIO();
+                if (io.ConfigFlags & (1 << 10)) // ImGuiConfigFlags_ViewportsEnable
+                {
+                    ImGui::UpdatePlatformWindows();
+                    ImGui::RenderPlatformWindowsDefault();
                 }
+                
+                glfwSwapBuffers(window);
                 next_paint = t + 250;
             }
 
-            glClear(GL_COLOR_BUFFER_BIT);
-            myimgui.NewFrame();
-            myimgui.Update(ctx, slot, next_paint);
-            myimgui.Render();
-            glfwSwapBuffers(window);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+        catch (...) {
+            fprintf(stderr, "An error occurred, cleaning up\n");
+        }
+        plugin.Cleanup();
         myimgui.Shutdown();
     }
 
     return 0;
+    }
 
-}
