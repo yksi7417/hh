@@ -16,7 +16,6 @@ if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\B
     echo Warning: Could not find Visual Studio 2022 installation.
     echo Please run this from "x64 Native Tools Command Prompt for VS"
     echo.
-    pause
 )
 
 call build_navigator_test.bat
@@ -28,5 +27,4 @@ if %errorlevel% equ 0 (
 ) else (
     echo.
     echo Build failed! Please check error messages above.
-    pause
 )
