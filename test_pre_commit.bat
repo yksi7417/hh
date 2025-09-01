@@ -8,15 +8,19 @@ REM Quick prerequisite check - accept either PowerShell Core or Windows PowerShe
 pwsh.exe --version >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     set POWERSHELL_CMD=pwsh.exe
-) else (
-    powershell.exe -Command "exit 0" >nul 2>&1
-    if %ERRORLEVEL% equ 0 (
-        set POWERSHELL_CMD=powershell.exe
-    ) else (
-        echo ERROR: PowerShell required for tests
-        exit /b 1
-    )
+    goto :powershell_ready
 )
+
+powershell.exe -Command "exit 0" >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    set POWERSHELL_CMD=powershell.exe
+    goto :powershell_ready
+)
+
+echo ERROR: PowerShell required for tests
+exit /b 1
+
+:powershell_ready
 
 echo Building and running tests...
 cd imgui_opengl_glad
