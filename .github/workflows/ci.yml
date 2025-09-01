@@ -22,14 +22,14 @@ jobs:
     - name: Setup PowerShell and Prerequisites
       shell: powershell
       run: |
-        # Check if PowerShell Core (pwsh) is available
+        Write-Host "Checking PowerShell availability..."
         $pwshAvailable = Get-Command pwsh -ErrorAction SilentlyContinue
         if ($pwshAvailable) {
-          Write-Host "✓ PowerShell Core is available: $($pwshAvailable.Version)"
+          Write-Host "PowerShell Core is available"
           pwsh --version
         } else {
-          Write-Host "PowerShell Core not found, but we can use Windows PowerShell for the build script"
-          $PSVersionTable.PSVersion
+          Write-Host "Using Windows PowerShell for build"
+          Write-Host "PowerShell version: $($PSVersionTable.PSVersion)"
         }
     
     - name: Run Tests (No GUI Dependencies)
