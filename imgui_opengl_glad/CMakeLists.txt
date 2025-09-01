@@ -60,8 +60,4 @@ target_link_libraries(emsp PRIVATE glad::glad)
 find_package(glfw3 CONFIG REQUIRED)
 target_link_libraries(emsp PRIVATE glfw)
 
-# Remove imgui from vcpkg dependencies since we're using local version
-# find_package(imgui CONFIG REQUIRED)
-# target_link_libraries(emsp PRIVATE imgui::imgui)
-
 add_subdirectory(plugins)
