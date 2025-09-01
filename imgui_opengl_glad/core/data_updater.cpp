@@ -7,6 +7,7 @@ void update_latest_data_from_context(HostContext& ctx,
                                    const HostMDSlot& slot)
 {
     uint32_t id;
+    // Performance critical: tight loop processing queued market data updates
     while (ctx.q.pop(id))
     {
         if (id < config.num_rows)
@@ -16,6 +17,7 @@ void update_latest_data_from_context(HostContext& ctx,
     if (t >= next_paint)
     {
         uint32_t printed = 0;
+        // Performance critical: batch processing all rows for rendering
         for (uint32_t i = 0; i < config.num_rows; ++i)
         {
             if (!ctx.dirty[i])
@@ -24,6 +26,7 @@ void update_latest_data_from_context(HostContext& ctx,
 
             HostContext::RowSnap snap{};
             bool ok = false;
+            // Performance critical: retry loop for atomic row snapshot
             for (int tries = 0; tries < 4 && !ok; ++tries)
                 ok = row_snapshot(&ctx, &slot, i, snap);
             if (!ok)

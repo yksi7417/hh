@@ -17,7 +17,7 @@ set LINT_EXIT_CODE=%ERRORLEVEL%
 
 if %LINT_EXIT_CODE% neq 0 (
     echo.
-    echo ❌ Design principles violations found. Please fix or document justifications.
+    echo [ERROR] Design principles violations found. Please fix or document justifications.
     echo.
     echo Justification examples:
     echo   // Performance critical: tight loop for market data processing
@@ -26,7 +26,7 @@ if %LINT_EXIT_CODE% neq 0 (
     echo.
     set HAS_ERRORS=1
 ) else (
-    echo ✅ Design principles check passed!
+    echo [OK] Design principles check passed!
 )
 
 REM Run clang-tidy if available
@@ -54,9 +54,9 @@ if %ERRORLEVEL% equ 0 (
 
 echo.
 if defined HAS_ERRORS (
-    echo ❌ Code quality checks found issues!
+    echo [ERROR] Code quality checks found issues!
     exit /b 1
 ) else (
-    echo ✅ All code quality checks passed!
+    echo [OK] All code quality checks passed!
     exit /b 0
 )

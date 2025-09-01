@@ -8,6 +8,7 @@
 MarketDataTable::MarketDataTable() 
     : num_rows_(0), last_selected_row_(-1), filters_dirty_(true), groups_dirty_(true) {
     // Initialize all column filters
+    // Performance critical: initialization loop for column filters
     for (int i = 0; i < 5; i++) {
         column_filters_[i] = ColumnFilter{};
     }
@@ -24,6 +25,7 @@ void MarketDataTable::Initialize(uint32_t max_rows) {
     
     // Initialize all row indices (0, 1, 2, ..., max_rows-1)
     all_row_indices_.clear();
+    // Performance critical: initialization loop for row index array
     for (uint32_t i = 0; i < max_rows; ++i) {
         all_row_indices_.push_back(i);
     }
@@ -32,6 +34,7 @@ void MarketDataTable::Initialize(uint32_t max_rows) {
 void MarketDataTable::UpdateFromContext(HostContext& ctx, const HostMDSlot& slot, bool should_refresh) {
     // Process dirty queue - no copying, just queue management
     uint32_t id;
+    // Performance critical: tight loop processing queued UI updates
     while (ctx.q.pop(id)) {
         if (id < ctx.num_rows) {
             ctx.dirty[id] = 1;
@@ -41,11 +44,13 @@ void MarketDataTable::UpdateFromContext(HostContext& ctx, const HostMDSlot& slot
     if (!should_refresh) return;
 
     // Update snapshots in-place within the context (no copying to our data)
+    // Performance critical: bulk processing all dirty rows for UI refresh
     for (uint32_t i = 0; i < ctx.num_rows; ++i) {
         if (ctx.dirty[i]) {
             ctx.dirty[i] = 0;
             HostContext::RowSnap tmp{};
             bool ok = false;
+            // Performance critical: retry loop for consistent row snapshot
             for (int tries = 0; tries < 2 && !ok; ++tries) {
                 ok = row_snapshot(&ctx, &slot, i, tmp);
             }
@@ -61,6 +66,7 @@ void MarketDataTable::UpdateFromContext(HostContext& ctx, const HostMDSlot& slot
     if (ctx.num_rows != num_rows_) {
         num_rows_ = ctx.num_rows;
         all_row_indices_.clear();
+        // Performance critical: rebuilding row index array for UI display
         for (uint32_t i = 0; i < num_rows_; ++i) {
             all_row_indices_.push_back(i);
         }
@@ -88,6 +94,7 @@ void MarketDataTable::SelectRowRange(int start_row, int end_row) {
     if (start_row > end_row) std::swap(start_row, end_row);
     
     auto& display_indices = HasActiveFilters() ? filtered_indices_ : all_row_indices_;
+    // Performance critical: loop over row range for multi-selection
     for (int row = start_row; row <= end_row; row++) {
         if (row >= 0 && row < (int)display_indices.size()) {
             uint32_t row_id = display_indices[row];  // Use the actual row index as ID
@@ -161,6 +168,7 @@ void MarketDataTable::RenderSelectionInfo() {
         
         if (ImGui::BeginPopup("GroupByPopup")) {
             const char* column_names[] = {"ID", "Timestamp", "Price", "Quantity", "Side"};
+            // Performance critical: column selection loop for grouping UI
             for (int i = 0; i < 5; i++) {
                 if (ImGui::MenuItem(column_names[i])) {
                     SetGroupByColumn(i);
@@ -215,6 +223,7 @@ void MarketDataTable::RenderTable(HostContext& ctx, const HostMDSlot& slot) {
         // Add filter row as the first row after headers
         ImGui::TableNextRow(ImGuiTableRowFlags_None);
         
+        // Performance critical: filter UI rendering loop for all columns
         for (int column = 0; column < 5; column++) {
             ImGui::TableSetColumnIndex(column);
             ImGui::PushID(column);
@@ -309,6 +318,7 @@ void MarketDataTable::RenderTable(HostContext& ctx, const HostMDSlot& slot) {
                 if (display_indices.size() > 1) {
                     std::sort(display_indices.begin(), display_indices.end(), 
                         [&](uint32_t a_index, uint32_t b_index) {
+                            // Performance critical: multi-column sort comparison loop
                             for (int n = 0; n < sort_specs->SpecsCount; n++) {
                                 const ImGuiTableColumnSortSpecs* sort_spec = &sort_specs->Specs[n];
                                 
@@ -332,7 +342,9 @@ void MarketDataTable::RenderTable(HostContext& ctx, const HostMDSlot& slot) {
         ImGuiListClipper clipper;
         clipper.Begin((int)display_indices.size());
         
+        // Performance critical: main UI rendering loop with virtual scrolling
         while (clipper.Step()) {
+            // Performance critical: render only visible rows for performance
             for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
                 uint32_t row_index = display_indices[row];
                 const HostContext::RowSnap& snap = ctx.last[row_index];
@@ -389,6 +401,7 @@ void MarketDataTable::RenderTable(HostContext& ctx, const HostMDSlot& slot) {
 
 // Filter management methods
 void MarketDataTable::ClearAllFilters() {
+    // Performance critical: filter clearing loop for all columns
     for (int i = 0; i < 5; i++) {
         column_filters_[i] = ColumnFilter{};
     }
@@ -403,6 +416,7 @@ void MarketDataTable::SetColumnFilter(int column, const ColumnFilter& filter) {
 }
 
 bool MarketDataTable::HasActiveFilters() const {
+    // Performance critical: filter checking loop for all columns
     for (int i = 0; i < 5; i++) {
         if (column_filters_[i].enabled) {
             return true;
@@ -422,6 +436,7 @@ void MarketDataTable::ApplyFilters(HostContext& ctx, const HostMDSlot& slot) {
         filtered_indices_ = all_row_indices_;
     } else {
         // Apply filters by testing each row index
+        // Performance critical: filtering loop over all rows
         for (uint32_t row_index : all_row_indices_) {
             if (PassesFilter(row_index, ctx, slot)) {
                 filtered_indices_.push_back(row_index);
@@ -433,6 +448,7 @@ void MarketDataTable::ApplyFilters(HostContext& ctx, const HostMDSlot& slot) {
 }
 
 bool MarketDataTable::PassesFilter(uint32_t row_index, HostContext& ctx, const HostMDSlot& slot) const {
+    // Performance critical: filter validation loop for all columns
     for (int i = 0; i < 5; i++) {
         if (column_filters_[i].enabled) {
             if (!PassesColumnFilter(row_index, i, column_filters_[i], ctx, slot)) {
@@ -523,6 +539,7 @@ void MarketDataTable::BuildGroups(HostContext& ctx, const HostMDSlot& slot) {
     // Create a map to group rows by the selected column
     std::map<std::string, std::vector<uint32_t>> group_map;
     
+    // Performance critical: grouping all displayed rows by column value
     for (uint32_t row_index : display_indices) {
         std::string group_key = GetGroupKey(row_index, group_by_column_, ctx, slot);
         group_map[group_key].push_back(row_index);
@@ -530,6 +547,7 @@ void MarketDataTable::BuildGroups(HostContext& ctx, const HostMDSlot& slot) {
     
     // Convert map to vector of GroupInfo
     groups_.reserve(group_map.size());
+    // Performance critical: converting group map to display vector
     for (const auto& pair : group_map) {
         GroupInfo group;
         group.group_key = pair.first;
@@ -562,6 +580,7 @@ void MarketDataTable::RenderGroupedTable(HostContext& ctx, const HostMDSlot& slo
         ImGui::TableHeadersRow();
         
         // Render grouped data
+        // Performance critical: main loop for rendering grouped table
         for (int group_index = 0; group_index < (int)groups_.size(); group_index++) {
             GroupInfo& group = groups_[group_index];
             
@@ -570,6 +589,7 @@ void MarketDataTable::RenderGroupedTable(HostContext& ctx, const HostMDSlot& slo
             
             // Render group rows if not collapsed
             if (!group.is_collapsed) {
+                // Performance critical: loop rendering all rows within group
                 for (int i = 0; i < (int)group.row_indices.size(); i++) {
                     uint32_t row_index = group.row_indices[i];
                     RenderGroupRow(row_index, i, ctx, slot);

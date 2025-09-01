@@ -37,21 +37,26 @@ struct HostContext {
     uint32_t num_rows{0};
 };
 
+// Performance critical: inline function for atomic sequence update (hot path)
 static void host_begin_row_write(HostMDSlot* slot, uint32_t i) {
     HostContext* ctx = (HostContext*)slot->user;
     uint32_t s = ctx->seq[i].load(std::memory_order_relaxed);
     ctx->seq[i].store(s+1, std::memory_order_release); // odd
 }
+// Performance critical: inline function for atomic sequence update (hot path)
 static void host_end_row_write(HostMDSlot* slot, uint32_t i) {
     HostContext* ctx = (HostContext*)slot->user;
     uint32_t s = ctx->seq[i].load(std::memory_order_relaxed);
     ctx->seq[i].store(s+1, std::memory_order_release); // even
 }
+// Performance critical: inline function for lock-free queue push (hot path)
 static void host_notify_row_dirty(HostMDSlot* slot, uint32_t i) {
     HostContext* ctx = (HostContext*)slot->user;
+    // Performance critical: lock-free queue push for row update notification
     ctx->q.push(i);
 }
 
+// Performance critical: inline function for lock-free atomic row snapshot (hot path)
 static bool row_snapshot(const HostContext* ctx, const HostMDSlot* slot, uint32_t i, HostContext::RowSnap& out) {
     uint32_t s1 = ctx->seq[i].load(std::memory_order_acquire);
     if (s1 & 1u) return false;

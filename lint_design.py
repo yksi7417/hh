@@ -167,16 +167,16 @@ def main():
         violations = linter.check_file(filepath)
         
         if violations:
-            print(f"\n📁 {filepath.relative_to(Path.cwd()) if filepath.is_absolute() else filepath}")
+            print(f"\n[FILE] {filepath.relative_to(Path.cwd()) if filepath.is_absolute() else filepath}")
             for line_num, rule, message in violations:
-                print(f"  ⚠️  Line {line_num:3d}: [{rule}] {message}")
+                print(f"  [WARN] Line {line_num:3d}: [{rule}] {message}")
                 total_violations += 1
     
     if total_violations == 0:
-        print("✅ No design principle violations found!")
+        print("[OK] No design principle violations found!")
         return 0
     else:
-        print(f"\n❌ Found {total_violations} design principle violations")
+        print(f"\n[ERROR] Found {total_violations} design principle violations")
         return 1
 
 if __name__ == "__main__":
