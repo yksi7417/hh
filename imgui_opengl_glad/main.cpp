@@ -2,7 +2,6 @@
 #include "IMGuiComponents.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
-#include "imgui.h"
 
 #include <thread>
 
@@ -243,15 +242,6 @@ int main(int argc, char** argv)
                 myimgui.NewFrame();
                 myimgui.Update(ctx, slot, next_paint);
                 myimgui.Render();
-                
-                // Update and Render additional Platform Windows
-                ImGuiIO& io = ImGui::GetIO();
-                if (io.ConfigFlags & (1 << 10)) // ImGuiConfigFlags_ViewportsEnable
-                {
-                    ImGui::UpdatePlatformWindows();
-                    ImGui::RenderPlatformWindowsDefault();
-                }
-                
                 glfwSwapBuffers(window);
                 next_paint = t + 250;
             }

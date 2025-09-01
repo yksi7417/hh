@@ -1,15 +1,6 @@
 #include "IMGuiComponents.h"
 #include "main_context.h"
 #include <cstring>
-#include <GLFW/glfw3.h>
-
-// Manual docking flag definitions (since they're not exposed in current vcpkg build)
-#ifndef ImGuiConfigFlags_DockingEnable
-#define ImGuiConfigFlags_DockingEnable (1 << 7)
-#endif
-#ifndef ImGuiConfigFlags_ViewportsEnable  
-#define ImGuiConfigFlags_ViewportsEnable (1 << 10)
-#endif
 
 void ImGuiComponents::Init(GLFWwindow* window, const char* glsl_version) {
 	IMGUI_CHECKVERSION();
@@ -17,21 +8,11 @@ void ImGuiComponents::Init(GLFWwindow* window, const char* glsl_version) {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 	
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 	ImGui::StyleColorsDark();
-	
-	// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-	ImGuiStyle& style = ImGui::GetStyle();
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		style.WindowRounding = 0.0f;
-		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-	}
 }
 
 void ImGuiComponents::NewFrame() {
