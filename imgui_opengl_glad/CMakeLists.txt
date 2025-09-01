@@ -37,7 +37,7 @@ set(IMGUI_TEST_ENGINE_SOURCES
     ${IMGUI_TEST_ENGINE_DIR}/imgui_capture_tool.cpp
 )
 
-add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h" ${IMGUI_SOURCES})
+add_executable (emsp "main.cpp" "IMGuiComponents.cpp" "IMGuiComponents.h" "MarketDataTable.cpp" "MarketDataTable.h" ${IMGUI_SOURCES})
 
 target_compile_definitions(emsp PRIVATE 
     IMGUI_IMPL_OPENGL_LOADER_CUSTOM

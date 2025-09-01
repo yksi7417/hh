@@ -6,6 +6,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <cstdint>
+#include <memory>
+#include "MarketDataTable.h"
 
 // Forward declarations
 struct HostContext;
@@ -18,4 +20,7 @@ public:
   void Update(HostContext& ctx, const HostMDSlot& slot, uint64_t& next_paint_ms);
   void Render();
   void Shutdown();
+
+private:
+  std::unique_ptr<MarketDataTable> market_data_table_;
 };

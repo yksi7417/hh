@@ -1,4 +1,5 @@
 #include "IMGuiComponents.h"
+#include "MarketDataTable.h"
 #include "main_context.h"
 #include <cstring>
 #include "imgui.h"
@@ -26,6 +27,10 @@ void ImGuiComponents::Init(GLFWwindow* window, const char* glsl_version) {
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	// Initialize the enhanced market data table
+	market_data_table_ = std::make_unique<MarketDataTable>();
+	// We'll initialize it with max rows when we have context
 }
 
 void ImGuiComponents::NewFrame() {
@@ -37,57 +42,18 @@ void ImGuiComponents::NewFrame() {
 
 
 void imgui_render_table(HostContext& ctx, const HostMDSlot& slot, const bool should_refresh) {
-    uint32_t id;
-    while (ctx.q.pop(id)) {
-        if (id < ctx.num_rows) ctx.dirty[id] = 1;
-    }
-
-    if (ImGui::Begin("MarketData")) {
-        ImGui::Text("Rows: %u", ctx.num_rows);
-        ImGui::Separator();
-        ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
-        if (ImGui::BeginTable("md_table", 5, flags)) {
-            ImGui::TableSetupScrollFreeze(0,1);
-            ImGui::TableSetupColumn("ID");
-            ImGui::TableSetupColumn("TS (ns)");
-            ImGui::TableSetupColumn("PX (n)");
-            ImGui::TableSetupColumn("QT (n)");
-            ImGui::TableSetupColumn("SIDE");
-            ImGui::TableHeadersRow();
-
-            ImGuiListClipper clipper;
-            clipper.Begin((int)ctx.num_rows);
-            while (clipper.Step()) {
-                for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-                    HostContext::RowSnap snap = ctx.last[i];
-                    if (should_refresh && ctx.dirty[i]) {
-                        ctx.dirty[i] = 0;
-                        HostContext::RowSnap tmp{};
-                        bool ok=false;
-                        for (int tries=0; tries<2 && !ok; ++tries) ok = row_snapshot(&ctx, &slot, (uint32_t)i, tmp);
-                        if (ok) {
-                            if (std::memcmp(&tmp, &ctx.last[i], sizeof tmp) != 0) {
-                                ctx.last[i] = tmp;
-                            }
-                            snap = ctx.last[i];
-                        }
-                    }
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0); ImGui::Text("%d", i);
-                    ImGui::TableSetColumnIndex(1); ImGui::Text("%lld", (long long)snap.ts);
-                    ImGui::TableSetColumnIndex(2); ImGui::Text("%lld", (long long)snap.px);
-                    ImGui::TableSetColumnIndex(3); ImGui::Text("%lld", (long long)snap.qty);
-                    ImGui::TableSetColumnIndex(4); ImGui::Text("%u",  (unsigned)snap.side);
-                }
-            }
-            ImGui::EndTable();
-        }
-    }
-    ImGui::End();  // Always call End() regardless of Begin() return value
-
+    // This function is now replaced by MarketDataTable::Render()
+    // Keeping for compatibility but it's no longer used
 }
 
 void ImGuiComponents::Update(HostContext& ctx, const HostMDSlot& slot, uint64_t& next_paint_ms) {
+    // Initialize market data table if not done yet
+    static bool table_initialized = false;
+    if (!table_initialized && market_data_table_) {
+        market_data_table_->Initialize(ctx.num_rows);
+        table_initialized = true;
+    }
+
     // Create main window with dockspace (similar to imgui_basic)
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -110,11 +76,18 @@ void ImGuiComponents::Update(HostContext& ctx, const HostMDSlot& slot, uint64_t&
 
     ImGui::End(); // End MainWindow
 
-    // Now render the market data table as a separate dockable window
+    // Update and render the enhanced market data table
     uint64_t t = now_ms();
     bool should_refresh = (t >= next_paint_ms);
-    imgui_render_table(ctx, slot, should_refresh);
-    if (should_refresh) next_paint_ms = t + 250;
+    
+    if (market_data_table_) {
+        market_data_table_->UpdateFromContext(ctx, slot, should_refresh);
+        market_data_table_->Render(ctx, slot);
+    }
+    
+    if (should_refresh) {
+        next_paint_ms = t + 250;
+    }
 }
 
 void ImGuiComponents::Render() {
@@ -134,7 +107,10 @@ void ImGuiComponents::Render() {
 }
 
 void ImGuiComponents::Shutdown() {
-	// Cleanup
+	// Cleanup enhanced table
+	market_data_table_.reset();
+	
+	// Cleanup ImGui
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
