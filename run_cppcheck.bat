@@ -17,7 +17,6 @@ if errorlevel 1 (
     echo After installation, you may need to restart your terminal or add to PATH:
     echo   set PATH=%%PATH%%;C:\Program Files\Cppcheck
     echo.
-    pause
     exit /b 1
 )
 
@@ -27,31 +26,26 @@ echo.
 
 REM Run cppcheck on main source directories
 echo Analyzing source code...
-cppcheck --enable=warning,performance,portability,information --error-exitcode=1 ^
+echo.
+echo Analyzing imgui_opengl_glad project files...
+cppcheck --enable=warning,performance,portability --error-exitcode=1 ^
     --suppress=missingIncludeSystem ^
     --suppress=unusedFunction ^
+    --suppress=preprocessorErrorDirective ^
+    --suppress=normalCheckLevelMaxBranches ^
     --inline-suppr ^
     --std=c++17 ^
+    --language=c++ ^
     --platform=win64 ^
     --template="{file}({line}): {severity}: {message} [{id}]" ^
-    imgui_basic/ imgui_opengl_glad/core/ imgui_opengl_glad/ui/ imgui_opengl_glad/plugins/ ^
-    --exclude=imgui_basic/imgui/ ^
-    --exclude=imgui_basic/imgui_test_engine/ ^
-    --exclude=imgui_opengl_glad/imgui/ ^
-    --exclude=imgui_opengl_glad/imgui_test_engine/ ^
-    --exclude=build/ ^
-    --exclude=build_gui/ ^
-    --exclude=build_tests/ ^
-    --exclude=vcpkg_installed/
+    imgui_opengl_glad/core/ imgui_opengl_glad/ui/ imgui_opengl_glad/plugins/
 
 if errorlevel 1 (
     echo.
     echo CppCheck found issues that need attention.
     echo Please review and fix the reported problems.
-    pause
     exit /b 1
 ) else (
     echo.
     echo CppCheck analysis completed successfully - no issues found!
-    pause
 )

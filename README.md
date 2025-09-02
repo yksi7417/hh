@@ -138,6 +138,31 @@ The project enforces design principles and code quality through automated lintin
 .\lint.bat imgui_opengl_glad/core/data_updater.cpp imgui_opengl_glad/ui/MarketDataTable.cpp
 ```
 
+### **Static Code Analysis with CppCheck**
+The `run_cppcheck.bat` script performs comprehensive static analysis on your C++ code:
+
+**What it checks:**
+- ✅ Potential bugs and undefined behavior
+- ✅ Performance issues and inefficient code patterns
+- ✅ Portability problems across platforms
+- ✅ Memory leaks and resource management issues
+- ✅ Dead code and unreachable statements
+
+**Features:**
+- Analyzes `imgui_opengl_glad/core/`, `ui/`, and `plugins/` directories
+- Uses C++17 standard and Windows 64-bit platform settings
+- Excludes third-party libraries (ImGui, test engines)
+- Provides clear error messages with file locations
+- Returns appropriate exit codes for CI/CD integration
+
+**Example output:**
+```
+Running CppCheck static analysis...
+CppCheck version: Cppcheck 2.18.0
+Analyzing imgui_opengl_glad project files...
+CppCheck analysis completed successfully - no issues found!
+```
+
 ### **Design Principles Enforced**
 - ❌ Raw `new`/`delete` without documentation justification
 - ❌ `malloc`/`free` usage in C++ code (use RAII instead)
