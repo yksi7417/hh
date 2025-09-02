@@ -218,14 +218,19 @@ jobs:
       shell: powershell
       run: |
         Write-Host "Setting up vcpkg for GUI dependencies..."
-        # vcpkg should be available in the GitHub Actions runner
-        if (-not (Get-Command vcpkg -ErrorAction SilentlyContinue)) {
-          Write-Host "Installing vcpkg..."
-          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-          C:\vcpkg\bootstrap-vcpkg.bat
-          $env:PATH += ";C:\vcpkg"
+        # Create the directory structure that build_gui.bat expects
+        New-Item -ItemType Directory -Path "c:\dvlp" -Force -ErrorAction SilentlyContinue
+        
+        if (-not (Test-Path "c:\dvlp\vcpkg\vcpkg.exe")) {
+          Write-Host "Installing vcpkg at expected location: c:\dvlp\vcpkg..."
+          git clone https://github.com/Microsoft/vcpkg.git c:\dvlp\vcpkg
+          c:\dvlp\vcpkg\bootstrap-vcpkg.bat
+        } else {
+          Write-Host "vcpkg already exists at c:\dvlp\vcpkg"
         }
-        vcpkg version
+        
+        # Verify vcpkg is working
+        c:\dvlp\vcpkg\vcpkg.exe version
     
     - name: Build GUI Application
       shell: powershell
