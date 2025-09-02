@@ -88,29 +88,39 @@ jobs:
           imgui_opengl_glad/build_tests/Testing/**/*.log
 
   code-quality:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install clang-format
+    - name: Install LLVM (includes clang-format)
       run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-format-14
+        choco install llvm --version=18.1.6
+        refreshenv
     
     - name: Check code formatting
+      shell: powershell
       run: |
         # Find and format check core and ui files
-        FILES=$(find imgui_opengl_glad -name "*.cpp" -o -name "*.h" | grep -E "(core|ui)" || true)
-        if [ -n "$FILES" ]; then
-          echo "$FILES" | xargs clang-format-14 --dry-run --Werror
-          echo "Code formatting check completed"
-        else
-          echo "No core/ui files found to check"
-        fi
+        $files = Get-ChildItem -Path "imgui_opengl_glad" -Recurse -Include "*.cpp","*.h" | Where-Object { $_.FullName -match "(core|ui|tests)" }
+        if ($files) {
+          Write-Host "Checking formatting for:"
+          $files | ForEach-Object { Write-Host "  $_" }
+          $files | ForEach-Object { 
+            Write-Host "Checking: $($_.FullName)"
+            & clang-format --dry-run --Werror $_.FullName
+            if ($LASTEXITCODE -ne 0) { 
+              Write-Error "Formatting issues found in $($_.FullName)"
+              exit 1
+            }
+          }
+          Write-Host "Code formatting check completed successfully"
+        } else {
+          Write-Host "No core/ui files found to check"
+        }
     
-    - name: Run static analysis (cppcheck)
+    - name: Run static analysis (cppcheck) 
       run: |
-        sudo apt-get install -y cppcheck
+        choco install cppcheck
         cppcheck --enable=warning,performance,portability --error-exitcode=1 imgui_opengl_glad/core/data_updater.cpp imgui_opengl_glad/core/data_updater.h

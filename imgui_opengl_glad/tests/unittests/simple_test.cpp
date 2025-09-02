@@ -8,16 +8,14 @@
 /**
  * @brief Simple test to verify the basic setup works
  */
-TEST(SimpleTest, BasicSetup)
-{
+TEST(SimpleTest, BasicSetup) {
     EXPECT_EQ(1 + 1, 2);
 }
 
 /**
  * @brief Test basic math operations
  */
-TEST(SimpleTest, BasicMath)
-{
+TEST(SimpleTest, BasicMath) {
     EXPECT_EQ(2 * 2, 4);
     EXPECT_GT(5, 3);
     EXPECT_LT(1, 10);
@@ -26,8 +24,7 @@ TEST(SimpleTest, BasicMath)
 /**
  * @brief Test EmspConfig structure
  */
-TEST(EmspConfigTest, DefaultValues)
-{
+TEST(EmspConfigTest, DefaultValues) {
     EmspConfig config;
     EXPECT_GT(config.num_rows, 0);
     EXPECT_GT(config.writers, 0);
@@ -37,8 +34,7 @@ TEST(EmspConfigTest, DefaultValues)
 /**
  * @brief Test MPSCQueue basic functionality
  */
-TEST(MPSCQueueTest, BasicOperations)
-{
+TEST(MPSCQueueTest, BasicOperations) {
     MPSCQueue queue;
     queue.init(16);
     
@@ -56,21 +52,18 @@ TEST(MPSCQueueTest, BasicOperations)
 /**
  * @brief Test MPSCQueue multiple elements
  */
-TEST(MPSCQueueTest, MultipleElements)
-{
+TEST(MPSCQueueTest, MultipleElements) {
     MPSCQueue queue;
     queue.init(8);
     
     // Push multiple values
-    for (uint32_t i = 0; i < 5; ++i)
-{
+    for (uint32_t i = 0; i < 5; ++i) {
         EXPECT_TRUE(queue.push(i * 10));
     }
     
     // Pop and verify values
     uint32_t value;
-    for (uint32_t i = 0; i < 5; ++i)
-{
+    for (uint32_t i = 0; i < 5; ++i) {
         EXPECT_TRUE(queue.pop(value));
         EXPECT_EQ(value, i * 10);
     }
@@ -82,16 +75,14 @@ TEST(MPSCQueueTest, MultipleElements)
 /**
  * @brief Simple test for update_latest_data_from_context with minimal setup
  */
-TEST(BasicDataUpdaterTest, MinimalTest)
-{
+TEST(BasicDataUpdaterTest, MinimalTest) {
     EmspConfig config;
     config.num_rows = 10;  // Small number for testing
     
     HostContext ctx;
     ctx.num_rows = config.num_rows;
     ctx.seq = std::make_unique<std::atomic<uint32_t>[]>(config.num_rows);
-    for (uint32_t i = 0; i < config.num_rows; ++i)
-{
+    for (uint32_t i = 0; i < config.num_rows; ++i) {
         ctx.seq[i].store(0, std::memory_order_relaxed);
     }
     ctx.dirty.assign(config.num_rows, 0);
