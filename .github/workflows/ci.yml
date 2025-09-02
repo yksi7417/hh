@@ -201,3 +201,60 @@ jobs:
         choco install cppcheck
         # Use full path since PATH may not be updated immediately after installation
         & "C:\Program Files\Cppcheck\cppcheck.exe" --enable=warning,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem --suppress=unusedFunction --suppress=preprocessorErrorDirective --suppress=normalCheckLevelMaxBranches --inline-suppr --std=c++17 --language=c++ --platform=win64 --template="{file}({line}): {severity}: {message} [{id}]" imgui_opengl_glad/core/ imgui_opengl_glad/ui/ imgui_opengl_glad/plugins/
+
+  build-gui-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.3
+    
+    - name: Setup vcpkg
+      shell: powershell
+      run: |
+        Write-Host "Setting up vcpkg for GUI dependencies..."
+        # vcpkg should be available in the GitHub Actions runner
+        if (-not (Get-Command vcpkg -ErrorAction SilentlyContinue)) {
+          Write-Host "Installing vcpkg..."
+          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+          $env:PATH += ";C:\vcpkg"
+        }
+        vcpkg version
+    
+    - name: Build GUI Application
+      shell: powershell
+      run: |
+        # Run the GUI build script for integration testing
+        Write-Host "Building GUI application using build_gui.bat..."
+        .\build_gui.bat
+    
+    - name: Upload GUI build artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: gui-build-artifacts-windows
+        path: |
+          imgui_opengl_glad/build_gui/Debug/*.exe
+          imgui_opengl_glad/build_gui/Debug/*.dll
+          imgui_opengl_glad/build_gui/plugins/Debug/*.dll
+        retention-days: 7
+    
+    - name: Verify GUI executable
+      shell: powershell
+      run: |
+        $exePath = "imgui_opengl_glad\build_gui\Debug\emsp.exe"
+        if (Test-Path $exePath) {
+          $fileInfo = Get-Item $exePath
+          Write-Host "✅ GUI executable built successfully: $($fileInfo.Name)" -ForegroundColor Green
+          Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB" -ForegroundColor Green
+          Write-Host "   Last Modified: $($fileInfo.LastWriteTime)" -ForegroundColor Green
+        } else {
+          Write-Error "❌ GUI executable not found at expected location: $exePath"
+          exit 1
+        }
