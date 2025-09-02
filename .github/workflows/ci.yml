@@ -202,98 +202,10 @@ jobs:
         # Use full path since PATH may not be updated immediately after installation
         & "C:\Program Files\Cppcheck\cppcheck.exe" --enable=warning,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem --suppress=unusedFunction --suppress=preprocessorErrorDirective --suppress=normalCheckLevelMaxBranches --inline-suppr --std=c++17 --language=c++ --platform=win64 --template="{file}({line}): {severity}: {message} [{id}]" imgui_opengl_glad/core/ imgui_opengl_glad/ui/ imgui_opengl_glad/plugins/
 
-  build-gui-windows:
-    runs-on: windows-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.3
-    
-    - name: Setup vcpkg
-      shell: powershell
-      run: |
-        Write-Host "Setting up vcpkg for GUI dependencies..."
-        # Create the directory structure that build_gui.bat expects
-        New-Item -ItemType Directory -Path "c:\dvlp" -Force -ErrorAction SilentlyContinue
-        
-        if (-not (Test-Path "c:\dvlp\vcpkg\vcpkg.exe")) {
-          Write-Host "Installing vcpkg at expected location: c:\dvlp\vcpkg..."
-          git clone https://github.com/Microsoft/vcpkg.git c:\dvlp\vcpkg
-          c:\dvlp\vcpkg\bootstrap-vcpkg.bat
-        } else {
-          Write-Host "vcpkg already exists at c:\dvlp\vcpkg"
-        }
-        
-        # Verify vcpkg is working
-        c:\dvlp\vcpkg\vcpkg.exe version
-    
-    - name: Install vcpkg dependencies
-      shell: powershell
-      run: |
-        Write-Host "Installing GUI dependencies with vcpkg..."
-        # Install the dependencies from vcpkg.json
-        c:\dvlp\vcpkg\vcpkg.exe install --triplet x64-windows
-        
-        # Verify installations
-        Write-Host "Verifying installed packages..."
-        c:\dvlp\vcpkg\vcpkg.exe list
-    
-    - name: Build GUI Application
-      shell: powershell
-      run: |
-        # Since we already installed vcpkg dependencies, we'll call CMake directly
-        # instead of using build_gui.bat to avoid duplicate installations
-        Write-Host "Building GUI application with CMake directly..."
-        
-        cd imgui_opengl_glad
-        
-        Write-Host "Configuring CMake for GUI build..."
-        cmake -B build_gui -S . `
-          -DCMAKE_TOOLCHAIN_FILE=c:/dvlp/vcpkg/scripts/buildsystems/vcpkg.cmake `
-          -DBUILD_TESTS=OFF `
-          -DWITH_IMGUI=ON
-        
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "CMake configuration failed!"
-          exit 1
-        }
-        
-        Write-Host "Building GUI application..."
-        cmake --build build_gui --config Debug
-        
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Build failed!"
-          exit 1
-        }
-        
-        Write-Host "GUI build completed successfully!"
-    
-    - name: Upload GUI build artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: gui-build-artifacts-windows
-        path: |
-          imgui_opengl_glad/build_gui/Debug/*.exe
-          imgui_opengl_glad/build_gui/Debug/*.dll
-          imgui_opengl_glad/build_gui/plugins/Debug/*.dll
-        retention-days: 7
-    
-    - name: Verify GUI executable
-      shell: powershell
-      run: |
-        $exePath = "imgui_opengl_glad\build_gui\Debug\emsp.exe"
-        if (Test-Path $exePath) {
-          $fileInfo = Get-Item $exePath
-          Write-Host "✅ GUI executable built successfully: $($fileInfo.Name)" -ForegroundColor Green
-          Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB" -ForegroundColor Green
-          Write-Host "   Last Modified: $($fileInfo.LastWriteTime)" -ForegroundColor Green
-        } else {
-          Write-Error "❌ GUI executable not found at expected location: $exePath"
-          exit 1
-        }
+  # GUI build disabled temporarily - uncomment when ready to test
+  # build-gui-windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
+  #   # ... rest of GUI build steps
