@@ -14,10 +14,12 @@ struct MPSCQueue {
     std::vector<uint32_t> buf;
 
     static uint32_t next_pow2(uint32_t v) {
-        if (v < 2) return 2;
+        if (v < 2)
+            return 2;
         uint32_t p = 1;
         // Performance critical: bit shifting loop for power-of-2 calculation
-        while (p < v) p <<= 1;
+        while (p < v)
+            p <<= 1;
         return p;
     }
 
@@ -34,8 +36,8 @@ struct MPSCQueue {
         uint32_t h = head.fetch_add(1, std::memory_order_acq_rel);
         uint32_t t = tail.load(std::memory_order_acquire);
         if (h - t >= buf.size()) {
-            // overflow: return false and let caller decide what to do, 
-            // e.g. retry with newer value / etc 
+            // overflow: return false and let caller decide what to do,
+            // e.g. retry with newer value / etc
             return false;
         }
         buf[h & cap_mask] = value;
@@ -46,9 +48,10 @@ struct MPSCQueue {
     inline bool pop(uint32_t& out) {
         uint32_t t = tail.load(std::memory_order_acquire);
         uint32_t h = head.load(std::memory_order_acquire);
-        if (t == h) return false;
+        if (t == h)
+            return false;
         out = buf[t & cap_mask];
-        tail.store(t+1, std::memory_order_release);
+        tail.store(t + 1, std::memory_order_release);
         return true;
     }
 };

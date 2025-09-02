@@ -1,15 +1,16 @@
 #pragma once
 
-#include "platform.h"
-#include "../include/md_api.h"
-#include "mpsc.h"
 #include <chrono>
 #include <memory>
 
+#include "../include/md_api.h"
+#include "mpsc.h"
+#include "platform.h"
+
 /******************************************************************************
     Arena for preallocated memory used for entire lifetime of main program
-    Design Philisophy & Trader Off 
-    * Performace > Flexibility 
+    Design Philisophy & Trader Off
+    * Performace > Flexibility
         * Let's decide at program start time if this program is a
         *  XS = 128 MB
         *   S = 256 MB
@@ -19,7 +20,8 @@
         * XXL = 4 GB
         * if you are using M, and realize you need more than M, upgrade to L!
         * Save file should make upgrading easy!
-        * Just restart your program and the binary format should be loaded quickly and restore previous state
+        * Just restart your program and the binary format should be loaded quickly and restore
+   previous state
     * Hot loading of functionalities
         * Functionalities lives in shared library (plugin.dll)
         * You can re-compile and get latest behaviour easily without restart
@@ -29,7 +31,10 @@
 struct HostContext {
     std::unique_ptr<std::atomic<uint32_t>[]> seq;
     std::vector<uint8_t> dirty;
-    struct RowSnap { int64_t ts, px, qty; uint8_t side; };
+    struct RowSnap {
+        int64_t ts, px, qty;
+        uint8_t side;
+    };
     std::vector<RowSnap> last;
 
     MPSCQueue q;
@@ -41,13 +46,13 @@ struct HostContext {
 static void host_begin_row_write(HostMDSlot* slot, uint32_t i) {
     HostContext* ctx = (HostContext*)slot->user;
     uint32_t s = ctx->seq[i].load(std::memory_order_relaxed);
-    ctx->seq[i].store(s+1, std::memory_order_release); // odd
+    ctx->seq[i].store(s + 1, std::memory_order_release);  // odd
 }
 // Performance critical: inline function for atomic sequence update (hot path)
 static void host_end_row_write(HostMDSlot* slot, uint32_t i) {
     HostContext* ctx = (HostContext*)slot->user;
     uint32_t s = ctx->seq[i].load(std::memory_order_relaxed);
-    ctx->seq[i].store(s+1, std::memory_order_release); // even
+    ctx->seq[i].store(s + 1, std::memory_order_release);  // even
 }
 // Performance critical: inline function for lock-free queue push (hot path)
 static void host_notify_row_dirty(HostMDSlot* slot, uint32_t i) {
@@ -57,13 +62,16 @@ static void host_notify_row_dirty(HostMDSlot* slot, uint32_t i) {
 }
 
 // Performance critical: inline function for lock-free atomic row snapshot (hot path)
-static bool row_snapshot(const HostContext* ctx, const HostMDSlot* slot, uint32_t i, HostContext::RowSnap& out) {
+static bool row_snapshot(const HostContext* ctx, const HostMDSlot* slot, uint32_t i,
+                         HostContext::RowSnap& out) {
     uint32_t s1 = ctx->seq[i].load(std::memory_order_acquire);
-    if (s1 & 1u) return false;
-    HostContext::RowSnap tmp{ slot->ts_ns[i], slot->px_n[i], slot->qty[i], slot->side[i] };
+    if (s1 & 1u)
+        return false;
+    HostContext::RowSnap tmp{slot->ts_ns[i], slot->px_n[i], slot->qty[i], slot->side[i]};
     std::atomic_thread_fence(std::memory_order_acquire);
     uint32_t s2 = ctx->seq[i].load(std::memory_order_acquire);
-    if (s1 != s2 || (s2 & 1u)) return false;
+    if (s1 != s2 || (s2 & 1u))
+        return false;
     out = tmp;
     return true;
 }

@@ -96,34 +96,89 @@ jobs:
     
     - name: Install LLVM (includes clang-format)
       run: |
-        # Check if LLVM/clang-format is already available
-        if (Get-Command clang-format -ErrorAction SilentlyContinue) {
-          Write-Host "clang-format is already available"
-          clang-format --version
+        # Check if LLVM/clang-format is already available in common locations
+        $clangFormatPaths = @(
+          "clang-format",
+          "C:\Program Files\LLVM\bin\clang-format.exe",
+          "$env:ProgramFiles\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\bin\clang-format.exe"
+        )
+        
+        $found = $false
+        foreach ($path in $clangFormatPaths) {
+          try {
+            if ($path -eq "clang-format") {
+              $result = & $path --version 2>$null
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "clang-format found in PATH: $result"
+                $found = $true
+                break
+              }
+            } elseif (Test-Path $path) {
+              $result = & $path --version
+              Write-Host "clang-format found at: $path - $result"
+              $found = $true
+              break
+            }
+          } catch { continue }
+        }
+        
+        if (-not $found) {
+          Write-Host "Installing LLVM via Chocolatey..."
+          choco install llvm -y --no-progress
+          Write-Host "LLVM installed"
         } else {
-          # Install LLVM if not available (allow any version)
-          choco install llvm -y
-          # Add LLVM to PATH for this session
-          $env:PATH = "$env:PATH;C:\Program Files\LLVM\bin"
-          Write-Host "LLVM installed and added to PATH"
+          Write-Host "clang-format is already available"
         }
     
     - name: Check code formatting
       shell: powershell
       run: |
-        # Ensure clang-format is in PATH
-        $env:PATH = "$env:PATH;C:\Program Files\LLVM\bin"
+        # Find clang-format executable
+        $clangFormatPaths = @(
+          "clang-format",
+          "C:\Program Files\LLVM\bin\clang-format.exe", 
+          "$env:ProgramFiles\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\bin\clang-format.exe"
+        )
         
-        # Find and format check core and ui files
-        $files = Get-ChildItem -Path "imgui_opengl_glad" -Recurse -Include "*.cpp","*.h" | Where-Object { $_.FullName -match "(core|ui|tests)" }
-        if ($files) {
-          Write-Host "Checking formatting for:"
+        $clangFormat = $null
+        foreach ($path in $clangFormatPaths) {
+          try {
+            if ($path -eq "clang-format") {
+              $result = & $path --version 2>$null
+              if ($LASTEXITCODE -eq 0) { $clangFormat = $path; break }
+            } elseif (Test-Path $path) {
+              $clangFormat = $path; break
+            }
+          } catch { continue }
+        }
+        
+        if (-not $clangFormat) {
+          Write-Error "clang-format not found after installation"
+          exit 1
+        }
+        
+        Write-Host "Using clang-format: $clangFormat"
+        
+        # Find and format check only our core and ui files (exclude third-party libraries)
+        $coreFiles = Get-ChildItem -Path "imgui_opengl_glad\core" -Include "*.cpp","*.h" -Recurse
+        $uiFiles = Get-ChildItem -Path "imgui_opengl_glad\ui" -Include "*.cpp","*.h" -Recurse
+        $testFiles = Get-ChildItem -Path "imgui_opengl_glad\tests" -Include "*.cpp","*.h" -Recurse
+        $mainFile = Get-Item -Path "imgui_opengl_glad\main.cpp" -ErrorAction SilentlyContinue
+        
+        $files = @()
+        $files += $coreFiles
+        $files += $uiFiles
+        $files += $testFiles
+        if ($mainFile) { $files += $mainFile }
+        
+        if ($files.Count -gt 0) {
+          Write-Host "Checking formatting for our source files:"
           $files | ForEach-Object { Write-Host "  $_" }
           
           $formatErrors = 0
           $files | ForEach-Object { 
             Write-Host "Checking: $($_.FullName)"
-            $result = & clang-format --dry-run --Werror $_.FullName 2>&1
+            $result = & $clangFormat --dry-run --Werror $_.FullName 2>&1
             if ($LASTEXITCODE -ne 0) { 
               Write-Host "Formatting issues found in $($_.FullName):" -ForegroundColor Red
               Write-Host $result -ForegroundColor Red
@@ -138,7 +193,7 @@ jobs:
             Write-Host "Code formatting check completed successfully" -ForegroundColor Green
           }
         } else {
-          Write-Host "No core/ui files found to check"
+          Write-Host "No source files found to check"
         }
     
     - name: Run static analysis (cppcheck) 

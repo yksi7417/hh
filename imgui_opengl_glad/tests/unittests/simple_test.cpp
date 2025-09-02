@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
-#include "../../core/mpsc.h"
-#include "../../core/data_updater.h"
+
+#include <cstring>
 #include <memory>
 #include <vector>
-#include <cstring>
+
+#include "../../core/data_updater.h"
+#include "../../core/mpsc.h"
 
 /**
  * @brief Simple test to verify the basic setup works
@@ -37,14 +39,14 @@ TEST(EmspConfigTest, DefaultValues) {
 TEST(MPSCQueueTest, BasicOperations) {
     MPSCQueue queue;
     queue.init(16);
-    
+
     // Test push and pop
     EXPECT_TRUE(queue.push(42));
-    
+
     uint32_t value;
     EXPECT_TRUE(queue.pop(value));
     EXPECT_EQ(value, 42);
-    
+
     // Test empty queue
     EXPECT_FALSE(queue.pop(value));
 }
@@ -55,19 +57,19 @@ TEST(MPSCQueueTest, BasicOperations) {
 TEST(MPSCQueueTest, MultipleElements) {
     MPSCQueue queue;
     queue.init(8);
-    
+
     // Push multiple values
     for (uint32_t i = 0; i < 5; ++i) {
         EXPECT_TRUE(queue.push(i * 10));
     }
-    
+
     // Pop and verify values
     uint32_t value;
     for (uint32_t i = 0; i < 5; ++i) {
         EXPECT_TRUE(queue.pop(value));
         EXPECT_EQ(value, i * 10);
     }
-    
+
     // Queue should be empty now
     EXPECT_FALSE(queue.pop(value));
 }
@@ -78,7 +80,7 @@ TEST(MPSCQueueTest, MultipleElements) {
 TEST(BasicDataUpdaterTest, MinimalTest) {
     EmspConfig config;
     config.num_rows = 10;  // Small number for testing
-    
+
     HostContext ctx;
     ctx.num_rows = config.num_rows;
     ctx.seq = std::make_unique<std::atomic<uint32_t>[]>(config.num_rows);
@@ -109,15 +111,15 @@ TEST(BasicDataUpdaterTest, MinimalTest) {
     // Test with empty queue - should not crash
     uint64_t current_time = 100;
     uint64_t next_paint = 200;
-    
+
     EXPECT_NO_THROW(update_latest_data_from_context(ctx, config, current_time, next_paint, slot));
-    
+
     // Add some updates to queue
     ctx.q.push(1);
     ctx.q.push(3);
-    
+
     EXPECT_NO_THROW(update_latest_data_from_context(ctx, config, current_time, next_paint, slot));
-    
+
     // Verify that dirty flags were set
     EXPECT_EQ(ctx.dirty[1], 1);
     EXPECT_EQ(ctx.dirty[3], 1);

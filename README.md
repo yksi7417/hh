@@ -34,6 +34,24 @@ This project is a high-performance market data processing application built with
    - **Why useful**: Industry-standard static analysis for additional code quality checks
    - **Note**: The linter works without it, but provides more comprehensive analysis with it
 
+### Code Formatting (Development Requirement)
+6. **clang-format** (for code formatting consistency)
+   - **Global Installation Options**:
+     ```powershell
+     # Option 1: Global vcpkg installation (recommended)
+     vcpkg install --triplet x64-windows llvm[clang-tools-extra]
+     # Note: This installs globally, not project-specific
+     
+     # Option 2: Via Chocolatey
+     choco install llvm
+     
+     # Option 3: Via LLVM official installer
+     # Download from https://releases.llvm.org/
+     ```
+   - **Why needed**: Ensures consistent code formatting across all contributors
+   - **Usage**: Run `.\format-code.ps1` to auto-format all source files
+   - **CI Integration**: GitHub Actions automatically checks formatting compliance
+
 ## Code Quality & Pre-Commit Validation
 
 This repository includes a comprehensive **3-stage pre-commit validation system** that ensures both code quality and functional correctness:
@@ -46,7 +64,8 @@ This repository includes a comprehensive **3-stage pre-commit validation system*
 
 **Quick Quality Check**: `.\lint.bat` - Run design principle checks manually
 **Quick Test Validation**: `.\test_pre_commit.bat` - Run all tests with minimal output
-**Code Formatting**: `bash test_clang_format.sh` - Test clang-format configuration (Linux/WSL)
+**Code Formatting**: `.\format-code.ps1` - Auto-format all source files using clang-format
+**Format Validation**: Manual verification that formatting is consistent
 
 ## Quick Start
 
