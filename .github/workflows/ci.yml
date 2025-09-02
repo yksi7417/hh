@@ -96,26 +96,47 @@ jobs:
     
     - name: Install LLVM (includes clang-format)
       run: |
-        choco install llvm --version=18.1.6
-        refreshenv
+        # Check if LLVM/clang-format is already available
+        if (Get-Command clang-format -ErrorAction SilentlyContinue) {
+          Write-Host "clang-format is already available"
+          clang-format --version
+        } else {
+          # Install LLVM if not available (allow any version)
+          choco install llvm -y
+          # Add LLVM to PATH for this session
+          $env:PATH = "$env:PATH;C:\Program Files\LLVM\bin"
+          Write-Host "LLVM installed and added to PATH"
+        }
     
     - name: Check code formatting
       shell: powershell
       run: |
+        # Ensure clang-format is in PATH
+        $env:PATH = "$env:PATH;C:\Program Files\LLVM\bin"
+        
         # Find and format check core and ui files
         $files = Get-ChildItem -Path "imgui_opengl_glad" -Recurse -Include "*.cpp","*.h" | Where-Object { $_.FullName -match "(core|ui|tests)" }
         if ($files) {
           Write-Host "Checking formatting for:"
           $files | ForEach-Object { Write-Host "  $_" }
+          
+          $formatErrors = 0
           $files | ForEach-Object { 
             Write-Host "Checking: $($_.FullName)"
-            & clang-format --dry-run --Werror $_.FullName
+            $result = & clang-format --dry-run --Werror $_.FullName 2>&1
             if ($LASTEXITCODE -ne 0) { 
-              Write-Error "Formatting issues found in $($_.FullName)"
-              exit 1
+              Write-Host "Formatting issues found in $($_.FullName):" -ForegroundColor Red
+              Write-Host $result -ForegroundColor Red
+              $formatErrors++
             }
           }
-          Write-Host "Code formatting check completed successfully"
+          
+          if ($formatErrors -gt 0) {
+            Write-Error "Found $formatErrors files with formatting issues"
+            exit 1
+          } else {
+            Write-Host "Code formatting check completed successfully" -ForegroundColor Green
+          }
         } else {
           Write-Host "No core/ui files found to check"
         }
