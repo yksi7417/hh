@@ -232,6 +232,17 @@ jobs:
         # Verify vcpkg is working
         c:\dvlp\vcpkg\vcpkg.exe version
     
+    - name: Install vcpkg dependencies
+      shell: powershell
+      run: |
+        Write-Host "Installing GUI dependencies with vcpkg..."
+        # Install the dependencies from vcpkg.json
+        c:\dvlp\vcpkg\vcpkg.exe install --triplet x64-windows
+        
+        # Verify installations
+        Write-Host "Verifying installed packages..."
+        c:\dvlp\vcpkg\vcpkg.exe list
+    
     - name: Build GUI Application
       shell: powershell
       run: |
