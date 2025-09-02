@@ -199,4 +199,5 @@ jobs:
     - name: Run static analysis (cppcheck) 
       run: |
         choco install cppcheck
-        cppcheck --enable=warning,performance,portability --error-exitcode=1 imgui_opengl_glad/core/data_updater.cpp imgui_opengl_glad/core/data_updater.h
+        # Use full path since PATH may not be updated immediately after installation
+        & "C:\Program Files\Cppcheck\cppcheck.exe" --enable=warning,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem --suppress=unusedFunction --suppress=preprocessorErrorDirective --suppress=normalCheckLevelMaxBranches --inline-suppr --std=c++17 --language=c++ --platform=win64 --template="{file}({line}): {severity}: {message} [{id}]" imgui_opengl_glad/core/ imgui_opengl_glad/ui/ imgui_opengl_glad/plugins/
