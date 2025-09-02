@@ -1,9 +1,10 @@
 #pragma once
 
-#include <GLFW/glfw3.h>
+#include <glad/glad.h>  // MUST be included before any OpenGL headers (including GLFW)
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include "GLFW/glfw3.h"
 
 #include <cstdint>
 #include <memory>
