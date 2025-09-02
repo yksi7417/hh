@@ -1,9 +1,9 @@
 #include <thread>
 
+#include "glad/glad.h"  // MUST be included before any OpenGL headers (including GLFW)
 #include "GLFW/glfw3.h"
 #include "core/data_updater.h"
 #include "core/main_context.h"
-#include "glad/glad.h"
 #include "ui/IMGuiComponents.h"
 
 using namespace std;

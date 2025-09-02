@@ -1,5 +1,6 @@
 #pragma once
 
+#include "glad/glad.h"  // MUST be included before any OpenGL headers (including GLFW)
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -9,7 +10,6 @@
 #include <memory>
 
 #include "MarketDataTable.h"
-#include "glad/glad.h"
 
 // Forward declarations
 struct HostContext;
