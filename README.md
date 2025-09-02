@@ -34,6 +34,22 @@ This project is a high-performance market data processing application built with
    - **Why useful**: Industry-standard static analysis for additional code quality checks
    - **Note**: The linter works without it, but provides more comprehensive analysis with it
 
+6. **cppcheck** (for static code analysis)
+   - **Installation Options**:
+     ```powershell
+     # Option 1: winget (recommended)
+     winget install Cppcheck.Cppcheck
+     
+     # Option 2: Chocolatey
+     choco install cppcheck
+     
+     # Option 3: Direct download
+     # Download from https://github.com/danmar/cppcheck/releases
+     ```
+   - **Why useful**: Detects bugs, undefined behavior, and performance issues
+   - **Usage**: Run `.\run_cppcheck.bat` to analyze the entire codebase
+   - **Note**: May require terminal restart after installation to update PATH
+
 ### Code Formatting (Development Requirement)
 6. **clang-format** (for code formatting consistency)
    - **Global Installation Options**:
@@ -114,6 +130,9 @@ The project enforces design principles and code quality through automated lintin
 ```bash
 # Run all quality checks (design principles + static analysis)
 .\lint.bat
+
+# Run static code analysis with cppcheck
+.\run_cppcheck.bat
 
 # Check specific files only
 .\lint.bat imgui_opengl_glad/core/data_updater.cpp imgui_opengl_glad/ui/MarketDataTable.cpp
