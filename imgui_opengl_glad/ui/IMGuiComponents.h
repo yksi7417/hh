@@ -1,6 +1,6 @@
 #pragma once
 
-#include "glad/glad.h"  // MUST be included before any OpenGL headers (including GLFW)
+#include <glad/glad.h>  // MUST be included before any OpenGL headers (including GLFW)
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
