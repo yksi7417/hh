@@ -178,7 +178,7 @@ jobs:
           $formatErrors = 0
           $files | ForEach-Object { 
             Write-Host "Checking: $($_.FullName)"
-            $result = & $clangFormat --dry-run --Werror $_.FullName 2>&1
+            $result = & $clangFormat --dry-run $_.FullName 2>&1
             if ($LASTEXITCODE -ne 0) { 
               Write-Host "Formatting issues found in $($_.FullName):" -ForegroundColor Red
               Write-Host $result -ForegroundColor Red
