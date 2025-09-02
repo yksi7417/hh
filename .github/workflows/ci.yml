@@ -246,9 +246,32 @@ jobs:
     - name: Build GUI Application
       shell: powershell
       run: |
-        # Run the GUI build script for integration testing
-        Write-Host "Building GUI application using build_gui.bat..."
-        .\build_gui.bat
+        # Since we already installed vcpkg dependencies, we'll call CMake directly
+        # instead of using build_gui.bat to avoid duplicate installations
+        Write-Host "Building GUI application with CMake directly..."
+        
+        cd imgui_opengl_glad
+        
+        Write-Host "Configuring CMake for GUI build..."
+        cmake -B build_gui -S . `
+          -DCMAKE_TOOLCHAIN_FILE=c:/dvlp/vcpkg/scripts/buildsystems/vcpkg.cmake `
+          -DBUILD_TESTS=OFF `
+          -DWITH_IMGUI=ON
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "CMake configuration failed!"
+          exit 1
+        }
+        
+        Write-Host "Building GUI application..."
+        cmake --build build_gui --config Debug
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Build failed!"
+          exit 1
+        }
+        
+        Write-Host "GUI build completed successfully!"
     
     - name: Upload GUI build artifacts
       uses: actions/upload-artifact@v4
