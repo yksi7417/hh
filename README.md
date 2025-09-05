@@ -1,6 +1,15 @@
 # hh
 Handmade Hero Tutorial - Electronic Market Simulation Platform (EMSP)
 
+## Demo
+
+Video Capture of 100k entries, 50000 updates per second. 
+- Grouping 
+- Sorting
+- Filtering
+
+![EMSP Demo](doc/EMSP.gif)
+
 ## Project Overview
 This project is a high-performance market data processing application built with Dear ImGui, featuring:
 - Real-time market data visualization
@@ -106,7 +115,7 @@ cd build_tests && ctest -C Debug --verbose
 
 # OR manual commands (after setting up vcpkg):
 cd imgui_opengl_glad
-cmake -B build_gui -S . -DBUILD_TESTS=OFF -DWITH_IMGUI=ON -DCMAKE_TOOLCHAIN_FILE=c:/dvlp/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake -B build_gui -S . -DBUILD_TESTS=OFF -DWITH_IMGUI=ON -DCMAKE_TOOLCHAIN_FILE=d:/dvlp/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build build_gui --config Debug
 ```
 
