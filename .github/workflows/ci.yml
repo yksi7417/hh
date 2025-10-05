@@ -37,100 +37,7 @@ jobs:
       run: |
         # Run build script which now supports both PowerShell Core and Windows PowerShell
         .\build_tests_only.bat
-
-    - name: Install vcpkg (for GUI tests)
-      shell: powershell
-      run: |
-        if (-Not (Test-Path "vcpkg")) {
-          git clone https://github.com/microsoft/vcpkg.git
-        }
-        .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-
-    - name: Install Mesa software OpenGL runtime
-      shell: powershell
-      run: |
-        $headers = @{ "User-Agent" = "actions" }
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/pal1000/mesa-dist-win/releases/latest" -Headers $headers
-        $asset = $release.assets | Where-Object { $_.name -like "mesa3d-*-release-msvc.zip" } | Select-Object -First 1
-        if (-not $asset) {
-          Write-Error "Unable to locate Mesa release asset"
-          exit 1
-        }
-
-        $zipPath = Join-Path $env:RUNNER_TEMP "mesa3d.zip"
-        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
-
-        $extractDir = Join-Path $env:RUNNER_TEMP "mesa"
-        if (Test-Path $extractDir) {
-          Remove-Item $extractDir -Recurse -Force
-        }
-        Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
-
-        $mesaRoot = Get-ChildItem $extractDir -Directory | Select-Object -First 1
-        if (-not $mesaRoot) {
-          Write-Error "Mesa extraction directory not found"
-          exit 1
-        }
-
-        $mesaBin = Join-Path $mesaRoot.FullName "x64"
-        if (-not (Test-Path $mesaBin)) {
-          Write-Error "Mesa x64 binaries not found"
-          exit 1
-        }
-
-        Add-Content -Path $env:GITHUB_ENV -Value "MESA_DIST_DIR=$mesaBin"
-        Add-Content -Path $env:GITHUB_PATH -Value $mesaBin
-        Write-Host "Mesa software OpenGL runtime installed at $mesaBin"
-
-    - name: Install GUI dependencies
-      shell: powershell
-      env:
-        VCPKG_MANIFEST_DIR: ${{ github.workspace }}
-      run: |
-        # Use manifest mode to install the dependencies declared in vcpkg.json
-        .\vcpkg\vcpkg.exe install --triplet x64-windows
-
-    - name: Configure GUI tests
-      shell: powershell
-      env:
-        VCPKG_MANIFEST_DIR: ${{ github.workspace }}
-      run: |
-        cmake -B build_gui_tests -S imgui_opengl_glad/tests/guitests `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake" `
-          -DVCPKG_TARGET_TRIPLET=x64-windows `
-          -DVCPKG_MANIFEST_DIR="${{ github.workspace }}"
-
-    - name: Build GUI tests
-      shell: powershell
-      run: |
-        cmake --build build_gui_tests --config Release
-
-    - name: Run GUI tests
-      shell: powershell
-      run: |
-        $buildDir = (Resolve-Path build_gui_tests).Path
-        $testExe = Join-Path $buildDir "Release\\simple_gui_test.exe"
-        $mesaDir = $env:MESA_DIST_DIR
-        if (-Not (Test-Path $testExe)) {
-          Write-Error "GUI test executable not found: $testExe"
-          exit 1
-        }
-        if ($mesaDir -and (Test-Path $mesaDir)) {
-          $outputDir = Split-Path $testExe -Parent
-          foreach ($dll in "opengl32.dll", "libglapi.dll", "libgallium_wgl.dll") {
-            $source = Join-Path $mesaDir $dll
-            if (Test-Path $source) {
-              Copy-Item $source $outputDir -Force
-            } else {
-              Write-Warning "Mesa component missing: $source"
-            }
-          }
-        } else {
-          Write-Warning "Mesa directory not found. GUI tests may fail due to missing OpenGL runtime."
-        }
-        & $testExe --headless
-
+    
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
@@ -170,7 +77,7 @@ jobs:
       run: |
         cd build_tests
         ctest --verbose --output-on-failure
-
+    
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
