@@ -22,6 +22,7 @@
 
 // Forward declaration of our test registration function
 extern void RegisterSimpleGuiTests(ImGuiTestEngine* engine);
+extern void RegisterAppGuiTests(ImGuiTestEngine* engine);
 
 // Simple error callback for GLFW
 static void glfw_error_callback(int error, const char* description)
@@ -151,7 +152,11 @@ int main(int argc, char** argv)
 
     // Register our simple tests
     RegisterSimpleGuiTests(engine);
-    printf("Tests registered\n");
+    printf("Simple tests registered\n");
+    
+    // Register application GUI tests
+    RegisterAppGuiTests(engine);
+    printf("Application GUI tests registered\n");
     
     // In headless mode, queue all tests to run automatically
     if (headless_mode)

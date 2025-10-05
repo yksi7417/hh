@@ -46,4 +46,6 @@
 **/x64/**
 **/vcpkg_installed/**
 **/build*/**
+
+imgui.ini
 **/imgui.ini

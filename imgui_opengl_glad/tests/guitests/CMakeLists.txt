@@ -32,13 +32,23 @@ set(IMGUI_TEST_ENGINE_SOURCES
     ${IMGUI_TEST_ENGINE_DIR}/imgui_te_utils.cpp
 )
 
+# Application source files (for testing the real GUI)
+set(APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+set(APP_SOURCES
+    ${APP_DIR}/ui/IMGuiComponents.cpp
+    ${APP_DIR}/ui/MarketDataTable.cpp
+    ${APP_DIR}/core/data_updater.cpp
+)
+
 # Simple GUI test executable
 add_executable(simple_gui_test 
     simple_gui_test_main.cpp
     simple_gui_test.cpp
+    app_gui_test.cpp
     ${IMGUI_SOURCES}
     ${IMGUI_OPENGL3_WRAPPER}
     ${IMGUI_TEST_ENGINE_SOURCES}
+    ${APP_SOURCES}
 )
 
 # Compiler definitions
@@ -54,6 +64,9 @@ target_compile_definitions(simple_gui_test PRIVATE
 target_include_directories(simple_gui_test PRIVATE 
     ${IMGUI_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../imgui_test_engine
+    ${APP_DIR}
+    ${APP_DIR}/core
+    ${APP_DIR}/ui
 )
 
 # Find and link vcpkg packages
