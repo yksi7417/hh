@@ -112,16 +112,15 @@ cmake --build build --config Debug
 build_simple_test.bat
 ```
 
-### Run - Interactive Mode (Default)
+### Run - Manual Mode (Default)
 
 Run the test application with GUI to manually run tests or observe automated test execution:
 
 ```bash
-# Windows
+# Windows - all equivalent
 run_test.bat
-
-# Or directly
 build\Debug\simple_gui_test.exe
+build\Debug\simple_gui_test.exe --manual
 ```
 
 **What You'll See**:
@@ -153,8 +152,7 @@ The headless mode:
 
 **Example Output**:
 ```
-Test Mode: Headless
-Run Speed: Fast
+Test Mode: Headless (Automated)
 ...
 All tests completed in headless mode. Exiting...
 
@@ -165,32 +163,13 @@ Failed: 0
 ===========================
 ```
 
-### Speed Modes
-
-Control the test execution speed in interactive mode:
-
-```bash
-# Fast mode - tests run at maximum speed (good for quick verification)
-run_fast.bat
-build\Debug\simple_gui_test.exe --fast
-
-# Normal mode - balanced speed (default)
-build\Debug\simple_gui_test.exe --normal
-
-# Cinematic mode - slow speed for demonstrations and debugging
-run_cinematic.bat
-build\Debug\simple_gui_test.exe --cinematic
-```
-
 ### Command-Line Options
 
 ```
 Usage: simple_gui_test.exe [options]
 Options:
   --headless      Run tests headlessly and exit (for CI)
-  --fast          Run tests in fast mode
-  --normal        Run tests in normal mode (default)
-  --cinematic     Run tests in cinematic mode (slow, for demos)
+  --manual        Run in manual/interactive mode (default)
   --help          Show help message
 ```
 

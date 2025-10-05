@@ -34,9 +34,7 @@ void PrintUsage(const char* program_name)
     printf("Usage: %s [options]\n", program_name);
     printf("Options:\n");
     printf("  --headless      Run tests headlessly and exit (for CI)\n");
-    printf("  --fast          Run tests in fast mode\n");
-    printf("  --normal        Run tests in normal mode (default)\n");
-    printf("  --cinematic     Run tests in cinematic mode (slow, for demos)\n");
+    printf("  --manual        Run in manual/interactive mode (default)\n");
     printf("  --help          Show this help message\n");
 }
 
@@ -44,26 +42,19 @@ int main(int argc, char** argv)
 {
     // Parse command line arguments
     bool headless_mode = false;
-    ImGuiTestRunSpeed run_speed = ImGuiTestRunSpeed_Normal;
+    bool manual_mode = false;
     
     for (int i = 1; i < argc; i++)
     {
         if (strcmp(argv[i], "--headless") == 0)
         {
             headless_mode = true;
-            run_speed = ImGuiTestRunSpeed_Fast; // Headless implies fast
+            manual_mode = false;
         }
-        else if (strcmp(argv[i], "--fast") == 0)
+        else if (strcmp(argv[i], "--manual") == 0)
         {
-            run_speed = ImGuiTestRunSpeed_Fast;
-        }
-        else if (strcmp(argv[i], "--normal") == 0)
-        {
-            run_speed = ImGuiTestRunSpeed_Normal;
-        }
-        else if (strcmp(argv[i], "--cinematic") == 0)
-        {
-            run_speed = ImGuiTestRunSpeed_Cinematic;
+            manual_mode = true;
+            headless_mode = false;
         }
         else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
         {
@@ -78,10 +69,13 @@ int main(int argc, char** argv)
         }
     }
     
-    printf("Test Mode: %s\n", headless_mode ? "Headless" : "Interactive");
-    printf("Run Speed: %s\n", 
-           run_speed == ImGuiTestRunSpeed_Fast ? "Fast" :
-           run_speed == ImGuiTestRunSpeed_Normal ? "Normal" : "Cinematic");
+    // Default to manual mode if no mode specified
+    if (!headless_mode && !manual_mode)
+    {
+        manual_mode = true;
+    }
+    
+    printf("Test Mode: %s\n", headless_mode ? "Headless (Automated)" : "Manual (Interactive)");
 
     // Setup GLFW
     glfwSetErrorCallback(glfw_error_callback);
@@ -137,7 +131,7 @@ int main(int argc, char** argv)
     ImGuiTestEngineIO& test_io = ImGuiTestEngine_GetIO(engine);
     test_io.ConfigVerboseLevel = ImGuiTestVerboseLevel_Info;
     test_io.ConfigVerboseLevelOnError = ImGuiTestVerboseLevel_Debug;
-    test_io.ConfigRunSpeed = run_speed;
+    test_io.ConfigRunSpeed = headless_mode ? ImGuiTestRunSpeed_Fast : ImGuiTestRunSpeed_Normal;
     
     // Headless mode configuration
     if (headless_mode)

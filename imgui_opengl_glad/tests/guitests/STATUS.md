@@ -8,12 +8,12 @@ The ImGui Test Engine integration is **fully functional** with both interactive 
 
 ## Current Capabilities
 
-### ✅ Interactive Mode
+### ✅ Manual Mode (Default)
 - Full GUI window with ImGui Test Engine UI
 - Manual test selection and execution
 - Real-time test result display
 - Visual feedback during test execution
-- Speed control (fast/normal/cinematic)
+- Normal speed for interactive testing
 
 ### ✅ Headless Mode (CI/CD Ready)
 - Automated test queue execution  
@@ -37,7 +37,7 @@ cmake -B build -S .
 cmake --build build --config Debug
 ```
 
-### Run Interactive
+### Run Manual
 ```bash
 build\Debug\simple_gui_test.exe
 # or
@@ -63,8 +63,7 @@ All 3 example tests pass successfully:
 
 **Headless Output Example**:
 ```
-Test Mode: Headless
-Run Speed: Fast
+Test Mode: Headless (Automated)
 ...
 All tests completed in headless mode. Exiting...
 
@@ -82,9 +81,7 @@ Usage: simple_gui_test.exe [options]
 
 Options:
   --headless      Run tests headlessly and exit (for CI)
-  --fast          Run tests in fast mode
-  --normal        Run tests in normal mode (default)
-  --cinematic     Run tests in cinematic mode (slow, for demos)
+  --manual        Run in manual/interactive mode (default)
   --help          Show help message
 ```
 
@@ -170,10 +167,8 @@ Now that the basic infrastructure works, you can:
 - `simple_gui_test_main.cpp` - Test runner with CLI argument handling
 - `simple_gui_test.cpp` - Example test registrations
 - `CMakeLists.txt` - Build configuration
-- `run_test.bat` - Interactive mode runner
+- `run_test.bat` - Manual mode runner
 - `run_headless.bat` - Headless mode runner (CI)
-- `run_fast.bat` - Fast speed mode
-- `run_cinematic.bat` - Cinematic speed mode
 - `README.md` - Detailed documentation
 - `STATUS.md` - This file
 
