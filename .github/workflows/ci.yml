@@ -37,7 +37,50 @@ jobs:
       run: |
         # Run build script which now supports both PowerShell Core and Windows PowerShell
         .\build_tests_only.bat
-    
+
+    - name: Install vcpkg (for GUI tests)
+      shell: powershell
+      run: |
+        if (-Not (Test-Path "vcpkg")) {
+          git clone https://github.com/microsoft/vcpkg.git
+        }
+        .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+
+    - name: Install GUI dependencies
+      shell: powershell
+      env:
+        VCPKG_MANIFEST_DIR: ${{ github.workspace }}
+      run: |
+        # Use manifest mode to install the dependencies declared in vcpkg.json
+        .\vcpkg\vcpkg.exe install --triplet x64-windows
+
+    - name: Configure GUI tests
+      shell: powershell
+      env:
+        VCPKG_MANIFEST_DIR: ${{ github.workspace }}
+      run: |
+        cmake -B build_gui_tests -S imgui_opengl_glad/tests/guitests `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake" `
+          -DVCPKG_TARGET_TRIPLET=x64-windows `
+          -DVCPKG_MANIFEST_DIR="${{ github.workspace }}"
+
+    - name: Build GUI tests
+      shell: powershell
+      run: |
+        cmake --build build_gui_tests --config Release
+
+    - name: Run GUI tests
+      shell: powershell
+      run: |
+        $buildDir = (Resolve-Path build_gui_tests).Path
+        $testExe = Join-Path $buildDir "Release\\simple_gui_test.exe"
+        if (-Not (Test-Path $testExe)) {
+          Write-Error "GUI test executable not found: $testExe"
+          exit 1
+        }
+        & $testExe --headless
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
@@ -77,7 +120,7 @@ jobs:
       run: |
         cd build_tests
         ctest --verbose --output-on-failure
-    
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
