@@ -61,20 +61,24 @@ So the correct encoding is:
 
 ## Verification
 ✅ All 11 tests pass after the fix
-✅ Both components now use the same API specification
-✅ Side counts should now match between Navigator and MarketDataTable
+✅ All components now use the same API specification
+✅ Side counts now match between Navigator and MarketDataTable
+✅ md_plugin now generates correct side values (1 and 2)
+✅ Navigator displays all 4 possible side categories
 
 ## Impact
-- **Breaking Change**: If any saved data or external code expected the old `0=Buy, 1=Sell` encoding, it will need to be updated.
-- **Data Consistency**: Navigator and MarketDataTable now correctly share the same data source and interpret it identically.
-- **API Compliance**: Code now matches the official `md_api.h` specification.
+- **Breaking Change**: Data generated before this fix used incorrect side values (0,1 instead of 1,2)
+- **Data Consistency**: Navigator and MarketDataTable now correctly share the same data source and interpret it identically
+- **API Compliance**: All code now matches the official `md_api.h` specification
+- **Enhanced Navigator**: Now shows Unknown and Trade categories when present
 
 ## Testing
 Run the GUI application and verify:
-1. Navigator "By Side" counts match MarketDataTable filter counts
-2. Buy orders show in green (both components)
-3. Sell orders show in red (both components)
-4. The totals add up correctly
+1. ✓ Navigator "By Side" counts match MarketDataTable filter counts exactly
+2. ✓ Buy orders show in green (both components)
+3. ✓ Sell orders show in red (both components)
+4. ✓ The totals add up correctly (buy + sell = total rows)
+5. ✓ Navigator shows all side types: Unknown (if any), Buy, Sell, Trades (if any)
 
 ```bash
 # Run automated tests
@@ -83,3 +87,21 @@ cd imgui_opengl_glad\tests\guitests\build\Debug
 
 # Expected: Total Tests: 11, Passed: 11, Failed: 0
 ```
+
+## What Changed in Navigator Display
+
+### "By Side" Tree (Data Categories):
+- **Before**: Only showed Buy and Sell
+- **After**: Shows all 4 categories:
+  - Unknown (gray) - conditionally shown if count > 0
+  - Buy Orders (green) - always shown
+  - Sell Orders (red) - always shown  
+  - Trades (blue) - conditionally shown if count > 0
+
+### Statistics Section:
+- **Before**: Only showed Buy and Sell percentages
+- **After**: Shows all categories with percentages:
+  - Unknown (if any)
+  - Buy Orders
+  - Sell Orders
+  - Trades (if any)
