@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "MarketDataTable.h"
+#include "Navigator.h"
 
 // Forward declarations
 struct HostContext;
@@ -25,4 +26,5 @@ class ImGuiComponents {
 
   private:
     std::unique_ptr<MarketDataTable> market_data_table_;
+    std::unique_ptr<Navigator> navigator_;
 };

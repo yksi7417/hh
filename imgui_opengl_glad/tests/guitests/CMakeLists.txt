@@ -37,6 +37,7 @@ set(APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 set(APP_SOURCES
     ${APP_DIR}/ui/IMGuiComponents.cpp
     ${APP_DIR}/ui/MarketDataTable.cpp
+    ${APP_DIR}/ui/Navigator.cpp
     ${APP_DIR}/core/data_updater.cpp
 )
 

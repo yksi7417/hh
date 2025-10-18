@@ -34,6 +34,10 @@ void ImGuiComponents::Init(GLFWwindow* window, const char* glsl_version) {
     // Initialize the enhanced market data table
     market_data_table_ = std::make_unique<MarketDataTable>();
     // We'll initialize it with max rows when we have context
+    
+    // Initialize the navigator
+    navigator_ = std::make_unique<Navigator>();
+    // We'll initialize it with max rows when we have context
 }
 
 void ImGuiComponents::NewFrame() {
@@ -44,11 +48,16 @@ void ImGuiComponents::NewFrame() {
 }
 
 void ImGuiComponents::Update(HostContext& ctx, const HostMDSlot& slot, uint64_t& next_paint_ms) {
-    // Initialize market data table if not done yet
-    static bool table_initialized = false;
-    if (!table_initialized && market_data_table_) {
-        market_data_table_->Initialize(ctx.num_rows);
-        table_initialized = true;
+    // Initialize components if not done yet
+    static bool components_initialized = false;
+    if (!components_initialized) {
+        if (market_data_table_) {
+            market_data_table_->Initialize(ctx.num_rows);
+        }
+        if (navigator_) {
+            navigator_->Initialize(ctx.num_rows);
+        }
+        components_initialized = true;
     }
 
     // Create main window with dockspace (similar to imgui_basic)
@@ -74,10 +83,16 @@ void ImGuiComponents::Update(HostContext& ctx, const HostMDSlot& slot, uint64_t&
 
     ImGui::End();  // End MainWindow
 
-    // Update and render the enhanced market data table
+    // Update and render components - both share the same data source
     uint64_t t = now_ms();
     bool should_refresh = (t >= next_paint_ms);
 
+    // Render Navigator (left side, dockable)
+    if (navigator_) {
+        navigator_->Render(ctx, slot);
+    }
+
+    // Render Market Data Table (right side, dockable)
     if (market_data_table_) {
         market_data_table_->UpdateFromContext(ctx, slot, should_refresh);
         market_data_table_->Render(ctx, slot);
@@ -104,8 +119,9 @@ void ImGuiComponents::Render() {
 }
 
 void ImGuiComponents::Shutdown() {
-    // Cleanup enhanced table
+    // Cleanup components
     market_data_table_.reset();
+    navigator_.reset();
 
     // Cleanup ImGui
     ImGui_ImplOpenGL3_Shutdown();

@@ -46,7 +46,7 @@ if(WITH_IMGUI)
         ${IMGUI_TEST_ENGINE_DIR}/imgui_capture_tool.cpp
     )
 
-    add_executable (emsp "main.cpp" "ui/IMGuiComponents.cpp" "ui/IMGuiComponents.h" "ui/MarketDataTable.cpp" "ui/MarketDataTable.h" "core/data_updater.cpp" "core/data_updater.h" ${IMGUI_SOURCES})
+    add_executable (emsp "main.cpp" "ui/IMGuiComponents.cpp" "ui/IMGuiComponents.h" "ui/MarketDataTable.cpp" "ui/MarketDataTable.h" "ui/Navigator.cpp" "ui/Navigator.h" "core/data_updater.cpp" "core/data_updater.h" ${IMGUI_SOURCES})
 
     target_compile_definitions(emsp PRIVATE 
         IMGUI_IMPL_OPENGL_LOADER_CUSTOM
