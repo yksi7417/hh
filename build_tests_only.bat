@@ -47,6 +47,18 @@ echo Running tests...
 cd build_tests
 ctest --build-config Debug --verbose
 
+REM Save the absolute path
+set "TEST_DIR=%CD%"
+
 echo.
 echo Test build completed!
-echo Test executable: .\build_tests\Debug\unit_tests.exe
+echo Test executable: %TEST_DIR%\Debug\unit_tests.exe
+echo.
+echo To run tests again:
+echo   cd %TEST_DIR%
+echo   ctest --build-config Debug --verbose
+echo.
+echo Or run directly:
+echo   %TEST_DIR%\Debug\unit_tests.exe
+
+cd /d "%~dp0"

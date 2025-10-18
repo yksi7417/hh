@@ -53,6 +53,7 @@ cmake -B build_gui -S . ^
     -DWITH_IMGUI=ON
 if %ERRORLEVEL% neq 0 (
     echo CMake configuration failed!
+    cd /d "%~dp0"
     exit /b 1
 )
 
@@ -61,19 +62,31 @@ echo Building GUI application...
 cmake --build build_gui --config Debug
 if %ERRORLEVEL% neq 0 (
     echo Build failed!
+    cd /d "%~dp0"
     exit /b 1
 )
+
+REM Save the absolute path before checking
+set "GUI_DIR=%CD%"
 
 echo.
 echo GUI build completed!
 
 REM Check if executable was actually created
 if exist ".\build_gui\Debug\emsp.exe" (
-    echo ✓ GUI executable: .\build_gui\Debug\emsp.exe
+    echo ✓ GUI executable: %GUI_DIR%\build_gui\Debug\emsp.exe
     echo.
-    echo You can run the application with: .\build_gui\Debug\emsp.exe
+    echo You can run the application with:
+    echo   cd %GUI_DIR%\build_gui\Debug
+    echo   .\emsp.exe
+    echo.
+    echo Or directly:
+    echo   %GUI_DIR%\build_gui\Debug\emsp.exe
 ) else (
-    echo ✗ GUI executable NOT found: .\build_gui\Debug\emsp.exe
+    echo ✗ GUI executable NOT found: %GUI_DIR%\build_gui\Debug\emsp.exe
     echo The GUI build failed. Check the build output above.
+    cd /d "%~dp0"
     exit /b 1
 )
+
+cd /d "%~dp0"

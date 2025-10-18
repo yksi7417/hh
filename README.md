@@ -96,9 +96,9 @@ This repository includes a comprehensive **3-stage pre-commit validation system*
 
 **All build and linting scripts are located in the root directory for convenience.**
 
-### Building Tests Only (Recommended for CI/Development)
+### Building Unit Tests (Recommended for CI/Development)
 ```bash
-# Use the dedicated test build script (includes prerequisite checks)
+# Use the dedicated unit test build script (includes prerequisite checks)
 .\build_tests_only.bat
 
 # OR manual commands:
@@ -106,6 +106,19 @@ cd imgui_opengl_glad
 cmake -B build_tests -S . -DBUILD_TESTS=ON -DWITH_IMGUI=OFF
 cmake --build build_tests --config Debug --target unit_tests
 cd build_tests && ctest -C Debug --verbose
+```
+
+### Building GUI Tests (UI Component Testing)
+```bash
+# Build GUI tests with ImGui Test Engine
+.\build_ui_test.bat
+
+# Run tests in headless mode (automated, for CI)
+cd imgui_opengl_glad\tests\guitests
+.\build\Debug\simple_gui_test.exe --headless
+
+# Run tests in manual mode (interactive, for debugging)
+.\build\Debug\simple_gui_test.exe --manual
 ```
 
 ### Building Full GUI Application
@@ -120,14 +133,16 @@ cmake --build build_gui --config Debug
 ```
 
 ## Build Scripts
-- **`build_tests_only.bat`** - Fast tests-only build (uses `imgui_opengl_glad/build_tests/` directory, no GUI dependencies)
+- **`build_tests_only.bat`** - Fast unit tests build (uses `imgui_opengl_glad/build_tests/` directory, no GUI dependencies)
+- **`build_ui_test.bat`** - GUI tests with ImGui Test Engine (uses `imgui_opengl_glad/tests/guitests/build/` directory)
 - **`build_gui.bat`** - GUI application build (uses `imgui_opengl_glad/build_gui/` directory, includes vcpkg setup)
 - **`build.bat`** - Interactive selector (currently empty - user can customize)
 
 **Note**: All build scripts are located in the root directory and handle navigation to subdirectories automatically.
 
 **Note**: The build scripts use separate build directories to avoid configuration conflicts:
-- Tests use `imgui_opengl_glad/build_tests/` and build without external dependencies
+- Unit tests use `imgui_opengl_glad/build_tests/` and build without external dependencies
+- GUI tests use `imgui_opengl_glad/tests/guitests/build/` and test UI components with ImGui Test Engine
 - GUI builds use `imgui_opengl_glad/build_gui/` and include vcpkg dependencies (GLFW, GLAD)
 - All scripts are located in the root directory for easy access
 
@@ -214,20 +229,46 @@ git commit --no-verify -m "urgent fix"
 ```
 
 ## Testing
-The project includes a comprehensive test suite with 14+ test cases covering:
+
+The project includes two types of comprehensive tests:
+
+### Unit Tests (14+ test cases)
+Tests core functionality without GUI dependencies:
 - Core data structures (MPSCQueue, EmspConfig)
 - Market data processing logic
 - Edge cases and performance characteristics
 
-Run tests with:
 ```bash
-# After running build_tests_only.bat
+# Build and run unit tests
+.\build_tests_only.bat
+
+# OR after building, run tests manually:
 cd imgui_opengl_glad\build_tests
 ctest -C Debug --output-on-failure --verbose
 
 # OR run the executable directly
 .\Debug\unit_tests.exe
 ```
+
+### GUI Tests (6+ test cases)
+Automated UI testing with ImGui Test Engine:
+- Market data table rendering and updates
+- User interface components
+- Real-time data visualization
+
+```bash
+# Build GUI tests
+.\build_ui_test.bat
+
+# Run in headless mode (automated, for CI/CD)
+cd imgui_opengl_glad\tests\guitests
+.\build\Debug\simple_gui_test.exe --headless
+
+# Run in manual mode (interactive, for debugging)
+.\build\Debug\simple_gui_test.exe --manual
+```
+
+📖 **See [imgui_opengl_glad/tests/guitests/QUICK_REFERENCE.md](imgui_opengl_glad/tests/guitests/QUICK_REFERENCE.md)** for GUI testing documentation.
 
 ## Project Structure
 - `imgui_opengl_glad/` - Main application code
