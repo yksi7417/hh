@@ -783,10 +783,12 @@ uint8_t MarketDataTable::GetSideValue(uint32_t row_index, const HostMDSlot& slot
 // Utility functions
 const char* MarketDataTable::GetSideString(uint8_t side) const {
     switch (side) {
-    case 0:
-        return "Buy";
     case 1:
+        return "Buy";
+    case 2:
         return "Sell";
+    case 3:
+        return "Trade";
     default:
         return "Unknown";
     }
@@ -794,11 +796,13 @@ const char* MarketDataTable::GetSideString(uint8_t side) const {
 
 ImVec4 MarketDataTable::GetSideColor(uint8_t side) const {
     switch (side) {
-    case 0:
-        return ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for Buy
     case 1:
-        return ImVec4(1.0f, 0.3f, 0.3f, 1.0f);  // Red for Sell
+        return ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for Buy (bid)
+    case 2:
+        return ImVec4(1.0f, 0.3f, 0.3f, 1.0f);  // Red for Sell (ask)
+    case 3:
+        return ImVec4(0.7f, 0.7f, 1.0f, 1.0f);  // Blue for Trade
     default:
-        return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);  // White for Unknown
+        return ImVec4(0.5f, 0.5f, 0.5f, 1.0f);  // Gray for Unknown
     }
 }

@@ -108,7 +108,7 @@ void RegisterAppGuiTests(ImGuiTestEngine* engine) {
             vars.ts_ns[i] = 1000000 * (i + 1);
             vars.px_n[i] = 10000 + i * 100;
             vars.qty[i] = (i + 1) * 10;
-            vars.side[i] = i % 2;  // Alternate buy/sell
+            vars.side[i] = (i % 2 == 0) ? 1 : 2;  // Alternate buy/sell (1=buy, 2=sell)
             vars.ctx.seq[i].store(1, std::memory_order_relaxed);
         }
         
