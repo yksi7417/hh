@@ -1,4 +1,4 @@
-# Bug Fix: Side Encoding Mismatch Between Navigator and MarketDataTable
+# Bug Fix: Side Encoding Mismatch - Complete Fix
 
 ## Issue Description
 The Navigator and MarketDataTable were showing different counts for Buy/Sell orders:
@@ -8,13 +8,12 @@ The Navigator and MarketDataTable were showing different counts for Buy/Sell ord
 The numbers were swapped and one showed 0, indicating they were not interpreting the side field correctly.
 
 ## Root Cause
-The components were using **different encoding schemes** for the `side` field:
+**THREE components** were using incorrect encoding schemes for the `side` field:
 
-### Incorrect (MarketDataTable - OLD):
-```cpp
-case 0: return "Buy";   // WRONG!
-case 1: return "Sell";  // WRONG!
-```
+### Incorrect Encodings (OLD):
+1. **MarketDataTable**: `0 = Buy, 1 = Sell` ❌
+2. **md_plugin.cpp**: `0 = Buy, 1 = Sell` ❌
+3. **Navigator**: Was using correct encoding `1 = Buy, 2 = Sell` ✓
 
 ### Correct (API Specification from md_api.h):
 ```c
@@ -27,30 +26,38 @@ So the correct encoding is:
 - `2` = Ask (Sell)
 - `3` = Trade
 
-## The Fix
+## The Complete Fix
 
 ### Fixed Files:
 
 1. **`imgui_opengl_glad/ui/MarketDataTable.cpp`**
-   - Updated `GetSideString()` to use correct encoding: `1=Buy, 2=Sell, 3=Trade`
+   - Updated `GetSideString()` to use correct encoding: `1=Buy, 2=Sell, 3=Trade, 0=Unknown`
    - Updated `GetSideColor()` to match:
      - `1` (Buy/Bid) = Green
      - `2` (Sell/Ask) = Red
      - `3` (Trade) = Blue
      - `0` (Unknown) = Gray
 
-2. **`imgui_opengl_glad/tests/guitests/app_gui_test.cpp`**
-   - Fixed test data generation from `i % 2` (gives 0,1) to `(i % 2 == 0) ? 1 : 2` (gives 1,2)
+2. **`imgui_opengl_glad/plugins/md_plugin.cpp`** ⚠️ CRITICAL FIX
+   - Changed side initialization from `std::uniform_int_distribution<int> side_pick(0, 1)` 
+   - To: `std::uniform_int_distribution<int> side_pick(1, 2)`
+   - Now generates correct values: `1 = Buy (bid), 2 = Sell (ask)`
 
-### Navigator (Already Correct):
-The Navigator was already using the correct encoding:
-```cpp
-if (side == 1) {
-    stats_.buy_count++;
-} else if (side == 2) {
-    stats_.sell_count++;
-}
-```
+3. **`imgui_opengl_glad/ui/Navigator.h`**
+   - Added `unknown_count` and `trade_count` to DataStats
+   - Now tracks all 4 possible side values
+
+4. **`imgui_opengl_glad/ui/Navigator.cpp`**
+   - Updated `UpdateStatistics()` to use switch statement for all 4 side values
+   - Enhanced `RenderDataCategoriesTree()` to show:
+     - Unknown (gray) - only if count > 0
+     - Buy Orders (green)
+     - Sell Orders (red)
+     - Trades (blue) - only if count > 0
+   - Enhanced `RenderStatisticsTree()` to display all side categories with percentages
+
+5. **`imgui_opengl_glad/tests/guitests/app_gui_test.cpp`**
+   - Fixed test data generation from `i % 2` (gives 0,1) to `(i % 2 == 0) ? 1 : 2` (gives 1,2)
 
 ## Verification
 ✅ All 11 tests pass after the fix
