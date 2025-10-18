@@ -50,8 +50,10 @@ private:
     // Cached statistics (updated during render)
     struct DataStats {
         uint32_t total_rows = 0;
-        uint32_t buy_count = 0;
-        uint32_t sell_count = 0;
+        uint32_t unknown_count = 0;  // side == 0
+        uint32_t buy_count = 0;      // side == 1
+        uint32_t sell_count = 0;     // side == 2
+        uint32_t trade_count = 0;    // side == 3
         int64_t total_quantity = 0;
         int64_t avg_price = 0;
         uint32_t dirty_rows = 0;

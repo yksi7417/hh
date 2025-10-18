@@ -48,12 +48,14 @@ void Navigator::UpdateStatistics(HostContext& ctx, const HostMDSlot& slot) {
     // Performance critical: single-pass statistics aggregation over all market data rows
     // This loop processes all rows once per render frame to calculate real-time statistics
     for (uint32_t i = 0; i < slot.num_rows; ++i) {
-        // Count by side
+        // Count by side (per md_api.h: 0=unk, 1=bid, 2=ask, 3=trade)
         uint8_t side = slot.side[i];
-        if (side == 1) {
-            stats_.buy_count++;
-        } else if (side == 2) {
-            stats_.sell_count++;
+        switch (side) {
+            case 0: stats_.unknown_count++; break;
+            case 1: stats_.buy_count++; break;
+            case 2: stats_.sell_count++; break;
+            case 3: stats_.trade_count++; break;
+            default: break;  // Invalid side value
         }
         
         // Sum quantities
@@ -78,22 +80,41 @@ void Navigator::UpdateStatistics(HostContext& ctx, const HostMDSlot& slot) {
 
 void Navigator::RenderDataCategoriesTree(HostContext& ctx, const HostMDSlot& slot) {
     if (ImGui::TreeNode("Data Categories")) {
-        // Market Sides
+        // Market Sides (per md_api.h: 0=unk, 1=bid, 2=ask, 3=trade)
         if (ImGui::TreeNode("By Side")) {
-            // Buy side
-            ImGuiTreeNodeFlags buy_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            ImGuiTreeNodeFlags leaf_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            
+            // Unknown
+            if (stats_.unknown_count > 0) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // Gray
+                ImGui::TreeNodeEx("Unknown", leaf_flags);
+                ImGui::PopStyleColor();
+                ImGui::SameLine();
+                ImGui::TextDisabled("(%u)", stats_.unknown_count);
+            }
+            
+            // Buy (Bid)
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 1.0f, 0.3f, 1.0f)); // Green
-            ImGui::TreeNodeEx("Buy Orders", buy_flags);
+            ImGui::TreeNodeEx("Buy Orders", leaf_flags);
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGui::TextDisabled("(%u)", stats_.buy_count);
             
-            // Sell side
+            // Sell (Ask)
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f)); // Red
-            ImGui::TreeNodeEx("Sell Orders", buy_flags);
+            ImGui::TreeNodeEx("Sell Orders", leaf_flags);
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGui::TextDisabled("(%u)", stats_.sell_count);
+            
+            // Trade
+            if (stats_.trade_count > 0) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 1.0f, 1.0f)); // Blue
+                ImGui::TreeNodeEx("Trades", leaf_flags);
+                ImGui::PopStyleColor();
+                ImGui::SameLine();
+                ImGui::TextDisabled("(%u)", stats_.trade_count);
+            }
             
             ImGui::TreePop();
         }
@@ -154,12 +175,23 @@ void Navigator::RenderStatisticsTree(HostContext& ctx, const HostMDSlot& slot) {
         ImGui::Text("Average Price: %.2f", stats_.avg_price / 100.0);
         ImGui::Spacing();
         
+        // Show all side categories (per md_api.h: 0=unk, 1=bid, 2=ask, 3=trade)
+        if (stats_.unknown_count > 0) {
+            ImGui::Text("Unknown: %u (%.1f%%)", 
+                        stats_.unknown_count,
+                        stats_.total_rows > 0 ? (stats_.unknown_count * 100.0f / stats_.total_rows) : 0.0f);
+        }
         ImGui::Text("Buy Orders: %u (%.1f%%)", 
                     stats_.buy_count, 
                     stats_.total_rows > 0 ? (stats_.buy_count * 100.0f / stats_.total_rows) : 0.0f);
         ImGui::Text("Sell Orders: %u (%.1f%%)", 
                     stats_.sell_count,
                     stats_.total_rows > 0 ? (stats_.sell_count * 100.0f / stats_.total_rows) : 0.0f);
+        if (stats_.trade_count > 0) {
+            ImGui::Text("Trades: %u (%.1f%%)", 
+                        stats_.trade_count,
+                        stats_.total_rows > 0 ? (stats_.trade_count * 100.0f / stats_.total_rows) : 0.0f);
+        }
         ImGui::Spacing();
         
         ImGui::Text("Recently Updated: %u", stats_.dirty_rows);

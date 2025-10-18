@@ -49,8 +49,9 @@ extern "C" int bind_host_buffers_c(HostMDSlot* slot) {
     g_slot = slot;
     
     // Initialize side values once - they remain immutable during simulation
+    // Per md_api.h spec: 0=unk, 1=bid(buy), 2=ask(sell), 3=trade
     std::mt19937_64 init_rng((uint64_t)steady_clock::now().time_since_epoch().count());
-    std::uniform_int_distribution<int> side_pick(0, 1); // 0 = Buy, 1 = Sell
+    std::uniform_int_distribution<int> side_pick(1, 2); // 1 = Buy (bid), 2 = Sell (ask)
     
     for (uint32_t i = 0; i < slot->num_rows; ++i) {
         slot->side[i] = (uint8_t)side_pick(init_rng);
