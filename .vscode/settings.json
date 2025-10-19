@@ -75,7 +75,11 @@
         "xlocbuf": "cpp",
         "xlocmes": "cpp",
         "xlocmon": "cpp",
-        "xloctime": "cpp"
+        "xloctime": "cpp",
+        "any": "cpp",
+        "csignal": "cpp",
+        "fstream": "cpp",
+        "variant": "cpp"
     },
     "cmake.configureOnOpen": false,
     "vcpkg.general.enable": true,

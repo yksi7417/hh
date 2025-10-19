@@ -5,9 +5,11 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_test_engine/imgui_te_context.h"
+#include <memory>
 
 // Include application headers for Navigator tests
 #include "../../ui/Navigator.h"
+#include "../../ui/MarketDataTable.h"
 #include "../../core/main_context.h"
 
 // Test variables to hold Navigator state
@@ -60,6 +62,65 @@ struct NavigatorTestVars {
     void Cleanup() {
         if (initialized) {
             navigator.reset();
+            initialized = false;
+        }
+    }
+};
+
+// Test variables for Navigator Filter Integration
+struct FilterIntegrationVars {
+    HostContext ctx;
+    HostMDSlot slot;
+    std::vector<int64_t> ts_ns;
+    std::vector<int64_t> px_n;
+    std::vector<int64_t> qty;
+    std::vector<uint8_t> side;
+    
+    std::unique_ptr<Navigator> navigator;
+    std::unique_ptr<MarketDataTable> table;
+    bool initialized = false;
+    
+    void Initialize(uint32_t num_rows = 100) {
+        if (initialized) return;
+        
+        // Setup mock data
+        ts_ns.resize(num_rows, 0);
+        px_n.resize(num_rows, 0);
+        qty.resize(num_rows, 0);
+        side.resize(num_rows, 0);
+        
+        // Initialize context
+        ctx.num_rows = num_rows;
+        ctx.seq = std::make_unique<std::atomic<uint32_t>[]>(num_rows);
+        for (uint32_t i = 0; i < num_rows; ++i) {
+            ctx.seq[i].store(0, std::memory_order_relaxed);
+        }
+        ctx.dirty.assign(num_rows, 0);
+        ctx.last.resize(num_rows);
+        ctx.q.init(1u << 18);
+        
+        // Initialize slot
+        slot.num_rows = num_rows;
+        slot.ts_ns = ts_ns.data();
+        slot.px_n = px_n.data();
+        slot.qty = qty.data();
+        slot.side = side.data();
+        slot.user = &ctx;
+        
+        initialized = true;
+        
+        // Initialize both Navigator and MarketDataTable
+        navigator = std::make_unique<Navigator>();
+        navigator->Initialize(num_rows);
+        
+        table = std::make_unique<MarketDataTable>();
+        table->Initialize(num_rows);
+    }
+    
+    void Cleanup() {
+        if (initialized) {
+            navigator.reset();
+            table.reset();
             initialized = false;
         }
     }
@@ -278,14 +339,103 @@ void RegisterSimpleGuiTests(ImGuiTestEngine* e)
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
         ctx->SetRef("Navigator");
-        
+
         // Navigator should still render even with no data
         IM_CHECK(ctx->GetWindowByRef("") != nullptr);
-        
+
         // Should be able to open tree nodes even with no data
         ctx->ItemOpen("Data Categories");
         ctx->ItemOpen("Statistics");
-        
+
         IM_CHECK(ctx->GetWindowByRef("") != nullptr);
+    };
+    
+    //-----------------------------------------------------------------
+    // ## Test 9: Navigator Filter Integration with MarketDataTable
+    //-----------------------------------------------------------------
+    t = IM_REGISTER_TEST(e, "simple_gui", "navigator_filter_integration");
+    t->SetVarsDataType<FilterIntegrationVars>();
+    t->GuiFunc = [](ImGuiTestContext* ctx)
+    {
+        FilterIntegrationVars& vars = ctx->GetVars<FilterIntegrationVars>();
+        vars.Initialize(50);
+        
+        // Create test data: 30 Buy orders, 15 Sell orders, 5 large orders
+        for (int i = 0; i < 50; i++) {
+            vars.ts_ns[i] = 1000000 * (i + 1);
+            vars.px_n[i] = 15000 + i * 100;
+            
+            // Create varied data:
+            // First 30: Buy orders with qty 100-500
+            // Next 15: Sell orders with qty 600-900
+            // Last 5: Buy orders with qty > 1000 (large orders)
+            if (i < 30) {
+                vars.side[i] = 1;  // Buy
+                vars.qty[i] = 100 + (i * 10);
+            } else if (i < 45) {
+                vars.side[i] = 2;  // Sell
+                vars.qty[i] = 600 + ((i - 30) * 20);
+            } else {
+                vars.side[i] = 1;  // Buy (large)
+                vars.qty[i] = 1100 + ((i - 45) * 100);
+            }
+            
+            vars.ctx.seq[i].store(1, std::memory_order_relaxed);
+        }
+        
+        // Render both components - Navigator gets table pointer for filter interaction
+        if (vars.navigator && vars.table) {
+            vars.table->UpdateFromContext(vars.ctx, vars.slot, true);
+            
+            // Render both windows
+            vars.navigator->Render(vars.ctx, vars.slot, vars.table.get());
+            vars.table->Render(vars.ctx, vars.slot);
+        }
+    };
+    
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        FilterIntegrationVars& vars = ctx->GetVars<FilterIntegrationVars>();
+        
+        // Verify both windows exist
+        ctx->SetRef("Navigator");
+        IM_CHECK(ctx->GetWindowByRef("") != nullptr);
+        
+        ctx->SetRef("MarketData");
+        IM_CHECK(ctx->GetWindowByRef("") != nullptr);
+        
+        // Open Quick Filters tree and use path notation to access items
+        ctx->SetRef("Navigator");
+        ctx->ItemOpen("Quick Filters");
+        
+        // Test 1: Show All - should show all 50 rows
+        ctx->ItemClick("Quick Filters/Show All");
+        
+        // Verify no filters are active
+        IM_CHECK(!vars.table->HasActiveFilters());
+        
+        // Test 2: Show Buy Only - should filter to Buy orders (35 total: 30 + 5 large)
+        ctx->ItemClick("Quick Filters/Show Buy Only");
+        
+        // Verify filter is active
+        IM_CHECK(vars.table->HasActiveFilters());
+        
+        // Test 3: Show Sell Only - should filter to Sell orders (15 total)
+        ctx->ItemClick("Quick Filters/Show Sell Only");
+        
+        // Verify filter is active
+        IM_CHECK(vars.table->HasActiveFilters());
+        
+        // Test 4: Show Large Orders - should filter to qty > 1000 (5 orders)
+        ctx->ItemClick("Quick Filters/Show Large Orders (Qty > 1000)");
+        
+        // Verify filter is active
+        IM_CHECK(vars.table->HasActiveFilters());
+        
+        // Test 5: Clear filters and verify
+        ctx->ItemClick("Quick Filters/Show All");
+        
+        // Verify no filters are active again
+        IM_CHECK(!vars.table->HasActiveFilters());
     };
 }
