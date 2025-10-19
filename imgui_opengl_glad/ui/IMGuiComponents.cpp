@@ -87,9 +87,9 @@ void ImGuiComponents::Update(HostContext& ctx, const HostMDSlot& slot, uint64_t&
     uint64_t t = now_ms();
     bool should_refresh = (t >= next_paint_ms);
 
-    // Render Navigator (left side, dockable)
+    // Render Navigator (left side, dockable) - pass table pointer for filter interaction
     if (navigator_) {
-        navigator_->Render(ctx, slot);
+        navigator_->Render(ctx, slot, market_data_table_.get());
     }
 
     // Render Market Data Table (right side, dockable)

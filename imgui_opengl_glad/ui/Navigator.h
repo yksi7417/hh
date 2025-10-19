@@ -8,6 +8,7 @@
 // Forward declarations
 struct HostContext;
 struct HostMDSlot;
+class MarketDataTable;
 
 /**
  * @brief Navigator component for hierarchical data browsing
@@ -34,8 +35,9 @@ public:
      * @brief Render the navigator window
      * @param ctx HostContext with market data
      * @param slot HostMDSlot with raw data buffers
+     * @param table Optional MarketDataTable to apply filters to
      */
-    void Render(HostContext& ctx, const HostMDSlot& slot);
+    void Render(HostContext& ctx, const HostMDSlot& slot, MarketDataTable* table = nullptr);
     
     /**
      * @brief Cleanup resources
@@ -63,7 +65,7 @@ private:
     // Helper rendering methods
     void RenderDataCategoriesTree(HostContext& ctx, const HostMDSlot& slot);
     void RenderStatisticsTree(HostContext& ctx, const HostMDSlot& slot);
-    void RenderQuickFiltersTree();
+    void RenderQuickFiltersTree(MarketDataTable* table);
     
     // Data analysis helpers
     void UpdateStatistics(HostContext& ctx, const HostMDSlot& slot);

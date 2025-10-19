@@ -1,5 +1,7 @@
 #include "Navigator.h"
+#include "MarketDataTable.h"
 #include <algorithm>
+#include <cstring>
 
 Navigator::Navigator() : initialized_(false), max_rows_(0) {
 }
@@ -15,7 +17,7 @@ void Navigator::Initialize(uint32_t max_rows) {
     initialized_ = true;
 }
 
-void Navigator::Render(HostContext& ctx, const HostMDSlot& slot) {
+void Navigator::Render(HostContext& ctx, const HostMDSlot& slot, MarketDataTable* table) {
     if (!initialized_) return;
     
     // Update statistics from current data
@@ -33,7 +35,7 @@ void Navigator::Render(HostContext& ctx, const HostMDSlot& slot) {
     RenderStatisticsTree(ctx, slot);
     ImGui::Spacing();
     
-    RenderQuickFiltersTree();
+    RenderQuickFiltersTree(table);
     
     ImGui::End(); // Navigator
 }
@@ -208,15 +210,77 @@ void Navigator::RenderStatisticsTree(HostContext& ctx, const HostMDSlot& slot) {
     }
 }
 
-void Navigator::RenderQuickFiltersTree() {
+void Navigator::RenderQuickFiltersTree(MarketDataTable* table) {
     if (ImGui::TreeNode("Quick Filters")) {
-        ImGuiTreeNodeFlags leaf_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        // Show All - clears all filters
+        if (ImGui::Selectable("Show All", false)) {
+            if (table) {
+                table->ClearAllFilters();
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Clear all filters and show all rows");
+        }
         
-        ImGui::TreeNodeEx("Show All", leaf_flags);
-        ImGui::TreeNodeEx("Show Buy Only", leaf_flags);
-        ImGui::TreeNodeEx("Show Sell Only", leaf_flags);
-        ImGui::TreeNodeEx("Show Large Orders (Qty > 1000)", leaf_flags);
-        ImGui::TreeNodeEx("Show Recent Updates", leaf_flags);
+        // Show Buy Only - filter to side == 1
+        if (ImGui::Selectable("Show Buy Only", false)) {
+            if (table) {
+                table->ClearAllFilters();
+                ColumnFilter filter;
+                filter.enabled = true;
+                filter.type = FILTER_TEXT_EQUALS;
+                strncpy(filter.text_value, "Buy", sizeof(filter.text_value) - 1);
+                filter.text_value[sizeof(filter.text_value) - 1] = '\0';
+                table->SetColumnFilter(4, filter);  // Column 4 is SIDE
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Show only Buy orders (side = 1)");
+        }
+        
+        // Show Sell Only - filter to side == 2
+        if (ImGui::Selectable("Show Sell Only", false)) {
+            if (table) {
+                table->ClearAllFilters();
+                ColumnFilter filter;
+                filter.enabled = true;
+                filter.type = FILTER_TEXT_EQUALS;
+                strncpy(filter.text_value, "Sell", sizeof(filter.text_value) - 1);
+                filter.text_value[sizeof(filter.text_value) - 1] = '\0';
+                table->SetColumnFilter(4, filter);  // Column 4 is SIDE
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Show only Sell orders (side = 2)");
+        }
+        
+        // Show Large Orders (Qty > 1000)
+        if (ImGui::Selectable("Show Large Orders (Qty > 1000)", false)) {
+            if (table) {
+                table->ClearAllFilters();
+                ColumnFilter filter;
+                filter.enabled = true;
+                filter.type = FILTER_NUMERIC_GREATER;
+                filter.numeric_value = 1000;
+                table->SetColumnFilter(3, filter);  // Column 3 is QTY
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Show only orders with quantity > 1000");
+        }
+        
+        // Show Recent Updates - filter to dirty rows
+        if (ImGui::Selectable("Show Recent Updates", false)) {
+            if (table) {
+                table->ClearAllFilters();
+                // Note: This would require a special filter type for dirty rows
+                // For now, we'll just clear filters as a placeholder
+                // TODO: Implement dirty row filtering in MarketDataTable
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Show only recently updated rows");
+        }
         
         ImGui::TreePop();
     }
