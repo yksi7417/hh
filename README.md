@@ -10,6 +10,10 @@ Video Capture of 100k entries, 50000 updates per second.
 
 ![EMSP Demo](doc/EMSP.gif)
 
+Automated UI Test (Using IMGUI_TEST_ENGINE)
+![UI Test](doc/automated-test.gif)
+
+
 ## Project Overview
 This project is a high-performance market data processing application built with Dear ImGui, featuring:
 - Real-time market data visualization
